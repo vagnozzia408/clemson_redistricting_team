@@ -1,5 +1,5 @@
 This GitHub repository was created for the Clemson University Redistricting Team.
-Last Updated: 1/19/21 at 10:50 AM EST
+Last Updated: 1/19/21 at 1:10 PM EST
 
 Members:
 Matthew Saltzman
