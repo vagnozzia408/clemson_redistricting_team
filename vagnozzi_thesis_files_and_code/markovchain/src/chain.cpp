@@ -18,6 +18,7 @@
 #define MAXDEGREE 50 //max number of precincts incident with any precinct.
 using namespace std;
 
+// Amy attempting to make changes. 3/23/2021 12:33pm
 
 
 enum Type_S {
