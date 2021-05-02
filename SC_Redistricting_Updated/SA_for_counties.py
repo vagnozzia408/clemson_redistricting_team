@@ -20,13 +20,10 @@ def FieldCheck(in_table):
         arcpy.AddField_management(in_table, "Dist_Assgn", "DOUBLE", field_alias="DIST_ASSIGNMENT")
     return(DistField)    
 
-def DeviationFromIdealPop(sumpop):
-    SPlength = len(sumpop)
-    absdev = []
-    absdev = [0 for i in range(SPlength)]
+def DeviationFromIdealPop(sumpop,idealpop,distcount):
+    absdev = [0 for i in range(distcount)]
     
-    idealpop= sum(sumpop)/SPlength
-    for i in range(SPlength):
+    for i in range(distcount):
         absdev[i] = abs(sumpop[i]-idealpop)
     deviation = sum(absdev)
     deviation = round(deviation)
@@ -39,6 +36,11 @@ path = r"C:\Users\blake\Documents\Clemson Materials\Research\Saltzman Research\c
 arcpy.env.workspace = path
 
 in_table="tl_2020_45_county20"
+
+#User-defined variables
+distcount=7
+T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
+MaxIter =1000 #Maximum number of iterations to run
 
 
 #Returns DistField "Dist_Assgn" and creates the field if it's not already there
@@ -56,20 +58,19 @@ arcpy.AddMessage("There are {0} rows in {1}".format(rowcount,in_table))
 
 #Finds sum of each district population
 sumpop=[]
-sumpop = [0]*7
+sumpop = [0]*distcount
 with arcpy.da.SearchCursor(in_table, ['SUM_Popula',DistField]) as cursor:
     for row in cursor:
         #i = district number minus 1, since district numbers range from 1 to 7
         i = row[1]-1
         i = int(i)
         sumpop[i] = row[0] + sumpop[i]
-arcpy.AddMessage("sumpop is {0}".format(sumpop))            
+arcpy.AddMessage("sumpop is {0}".format(sumpop))
+idealpop=sum(sumpop)/distcount    
+deviation =[0]*(MaxIter+1)        
+deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
 
-T = 123000
 count = 0
-MaxIter =10000
-deviation =[0]*(MaxIter+1)
-deviation[0] = 10000000
 while T>0.1 and count <MaxIter:
     arcpy.AddMessage("count = {}. About to add 1.".format(count))
     count = count+1
@@ -89,10 +90,10 @@ while T>0.1 and count <MaxIter:
             sumpop[newdist-1] = sumpop[newdist-1] + distpop
             #arcpy.AddMessage("sumpop is {0}".format(sumpop)) 
             cursor.updateRow(row)   
-    deviation[count] = DeviationFromIdealPop(sumpop)
+    deviation[count] = DeviationFromIdealPop(sumpop,idealpop,distcount)
     #arcpy.AddMessage("absolute deviation is {0}".format(deviation[count]))    
     DeltaE = deviation[count] - deviation[count-1]
-    #arcpy.AddMessage("DeltaE = {0}. T = {1}".format(DeltaE,T))
+    arcpy.AddMessage("DeltaE = {:.2f}. T = {:.2f}".format(DeltaE,T))
     if DeltaE <0:
         T = T*.999
         continue
@@ -102,8 +103,8 @@ while T>0.1 and count <MaxIter:
             p = 1/math.exp(DeltaE/T)
         except OverflowError:
             p = 0
-        #arcpy.AddMessage("p = {0}. rand = {1}".format(p,rand))
-        if rand>=p:
+        arcpy.AddMessage("p = {:.4f}. rand = {:.4f}".format(p,rand))
+        if rand<=p:
             T = T*.999
             continue
         else: #undoes the district changes previously made. 
@@ -114,7 +115,7 @@ while T>0.1 and count <MaxIter:
                 for row in cursor:
                     row[1] = currdist
                     cursor.updateRow(row)
-
+arcpy.AddMessage("Original deviation = {}. Final deviation = {}".format(deviation[2],deviation[MaxIter]))
                 
     
             
