@@ -9,6 +9,8 @@ Created on Thu Apr 22 16:57:08 2021
 
 import arcpy, numpy
 
+
+### START MAIN CODE
 # Set property to overwrite existing output, by default
 arcpy.env.overwriteOutput = False
 
