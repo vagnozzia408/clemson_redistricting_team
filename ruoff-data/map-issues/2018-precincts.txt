@@ -1,0 +1,3 @@
+I took the 2018 Precincts shapefile that Ben provided and tagged it to the 2020 Blocks. I then cleaned up the border overlaps and produced the attached SC 2018 Block Precinct Assignments file in Excel which includes precinct names matching 2018 election return precincts (PREC2018) complete with typos and spelling errors and actual precinct names (ProperPrecName).
+
+John
