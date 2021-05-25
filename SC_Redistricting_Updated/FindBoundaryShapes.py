@@ -5,7 +5,6 @@ Created on Thu May  6 17:21:17 2021
 @author: blake
 """
 
-
 import arcpy, os
 
 def FindBoundaryShapes(in_table,neighbor_list,fields):
@@ -45,7 +44,6 @@ def MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression):
 
 ### START MAIN CODE
 currentdir = os.getcwd()
-arcpy.AddMessage("currentdir = {}".format(currentdir))
 path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 

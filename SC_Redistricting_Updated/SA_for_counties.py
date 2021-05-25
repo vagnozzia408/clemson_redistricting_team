@@ -8,7 +8,7 @@ Created on Thu Apr 15 16:52:28 2021
 ### IS AN ID COLUMN THAT UNIQUELY LABELS EACH ROW WITH THE NUMBERS 1-X, WHERE
 ### X IS THE NUMBER OF ROWS
 
-import arcpy,numpy,random,math,sys
+import arcpy,numpy,random,math,sys,os
 
 def FieldCheck(in_table):
     lstFields = arcpy.ListFields(in_table)
@@ -38,7 +38,8 @@ def FindBoundaryShapes(in_table,neighbor_list):
 
 ### START MAIN CODE
 # Set environment settings
-path = r"C:\Users\blake\Documents\Clemson Materials\Research\Saltzman Research\clemson_redistricting_team\SC_Redistricting_Updated\SC_Redistricting_Updated.gdb"
+currentdir = os.getcwd()
+path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 
 in_table=arcpy.GetParameterAsText(0)
