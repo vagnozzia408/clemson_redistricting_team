@@ -6,10 +6,11 @@ Created on Thu Apr 15 14:35:12 2021
 """
 
 
-import arcpy
+import arcpy,os
  
 # Set environment settings
-path = r"C:\Users\blake\Documents\Clemson Materials\Research\Saltzman Research\clemson_redistricting_team\SC_Redistricting_Updated\SC_Redistricting_Updated.gdb"
+currentdir = os.getcwd()
+path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 
 sf="tl_2020_45_county20"
