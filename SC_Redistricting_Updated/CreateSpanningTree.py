@@ -33,6 +33,7 @@ methodtype = arcpy.GetParameterAsText(0)
 neighbor_list=arcpy.GetParameterAsText(1)
 dist1=arcpy.GetParameterAsText(2)
 dist2=arcpy.GetParameterAsText(3)
+shapefile=arcpy.GetParameterAsText(4)
 
 dist1=int(dist1)
 dist2=int(dist2)
@@ -54,14 +55,14 @@ if 1==0: # Skipping for now ####FIX LATER. SHOULD ACCOUNT FOR METHODTYPE
     
     T = nx.minimum_spanning_tree(G, algorithm='kruskal')
     arcpy.AddMessage("T edges are {}".format(T.edges))
-        
+      
 ###NEED VALIDATION THAT THE TWO DISTRICTS ACTUALLY TOUCH EACH OTHER
-    
+  
 G = nx.Graph() #Creates an empty graph
 nodes = [] #Creates empty node list
 edges = [] #Creates empty edge list
 
-
+# Following line requires two-sided neighbor relationship. Maybe fix later. 
 with arcpy.da.SearchCursor(neighbor_list, "*", """{}={} OR {}={}""".format("src_CLUSTER_ID", dist1,"src_CLUSTER_ID",dist2)) as cursor:
     for row in cursor:
         if nodes.count(row[1])==0:
