@@ -16,7 +16,8 @@ def FindNamingFields(in_table):
     namefields=[]
     distfields=[]
     for field in lstFields:
-        if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
+        #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
+        if field.name in  ["GEOID20", "OBJECTID", "FID", "SOURCE_ID"]:
             namefields.append(field.name)
         if field.name in ["CLUSTER_ID", "Dist_Assgn"]:
             distfields.append(field.name)
@@ -57,7 +58,7 @@ all_fields = [item for sublist in [namefields, distfields] for item in sublist]
 
 if namefields == []:
     arcpy.AddMessage("Warning: the 'namefields' parameter is empty in PolygonNeighbors analysis.")
-elif distfields == []:
+if distfields == []:
     arcpy.AddMessage("Warning: the 'distfields' parameter is empty in PolygonNeighbors analysis.")
 
 #Creates a neighbor list if one currently does not exist
@@ -106,13 +107,15 @@ if "Boundary" not in fieldNames:
 
 #Creates fields names for use in in_table cursor actions
 fields4in_table = [namefields]
-fields4in_table = [item for sublist in fields4in_table for item in sublist]
+fields4in_table = [item for sublist in fields4in_table for item in sublist] #This line feels unnecessary?
 fields4in_table.append("Boundary")
+arcpy.AddMessage("fields4in_table={}".format(fields4in_table))
 in_tab_len = len(fields4in_table)
 #Creates field names for use in nbrlist cursor actions
 fields4nbrlist = [srcnamefields, nbrnamefields, srcdistfields, nbrdistfields]
 fields4nbrlist = [item for sublist in fields4nbrlist for item in sublist]
 fields4nbrlist.append("NODE_COUNT")
+arcpy.AddMessage("fields4nbrlist={}".format(fields4nbrlist))
 
 shape_name = [0] * srclen
 expression = [None] * srclen
@@ -127,7 +130,7 @@ with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
         arcpy.AddMessage("comboexpression is {}".format(comboexpression))
         with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
             for row in cursor:   
-                arcpy.AddMessage("row[0] = {0} and row[srclen + nbrlen] = {2} and row[srclen + nbrlen + srcdistlen] = {2}".format(row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen]))
+                arcpy.AddMessage("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}".format(row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen]))
                 if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
                     boundaryflag = 1 #shape is on a boundary
                     arcpy.AddMessage("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}".format(srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen]))
