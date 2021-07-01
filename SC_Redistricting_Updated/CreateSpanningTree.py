@@ -62,15 +62,14 @@ dist1_bdnds = [] #Creates empty list of bounardy units for dist1
 dist2_bdnds = [] #Creates empty list of bounardy units for dist2
    
 #Fills list of boundary units for dist1 and dist2  ## Need to work out how to limits the columns in SearchCursor below to row[2],row[8],row[9].
-with arcpy.da.SearchCursor(shapefile, "*", """{}={} OR {}={}""".format("Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
+with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".format("Boundary", 1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
     for row in cursor:
-        if row[8]==dist1 and row[9]==1: #If ClusterID==dist1 and Boundary unit is Yes
-            if dist1_bdnds.count(row[2])==0: #If we haven't already added the unit, add it to the list
-                dist1_bdnds.append(row[2])
-        if row[8]==dist2 and row[9]==1: #If ClusterID==dist2 and Boundary unit is Yes
-            if dist2_bdnds.count(row[2])==0:  #If we haven't already added the unit, add it to the list
-                dist2_bdnds.append(row[2])
-                
+        if row[1]==dist1: #If ClusterID==dist1 and Boundary unit is Yes
+            if dist1_bdnds.count(row[0])==0: #If we haven't already added the unit, add it to the list
+                dist1_bdnds.append(row[0])
+        if row[1]==dist2: #If ClusterID==dist2 and Boundary unit is Yes
+            if dist2_bdnds.count(row[0])==0:  #If we haven't already added the unit, add it to the list
+                dist2_bdnds.append(row[1])
 if len(dist1_bdnds)<=len(dist2_bdnds): #Determine the district with the fewest boundary units
     pridist = dist1
     secdist = dist2
@@ -80,7 +79,7 @@ if len(dist1_bdnds)>len(dist2_bdnds):
 
 # The current coding below has the fault of moving through all elements in dist#_bdnds one at a time.
 AdjFlag = False
-UnitsChecked = 0
+UnitsChecked = 0              
 if dist1==pridist:
     while AdjFlag==False and UnitsChecked<len(dist1_bdnds):
         for unit in dist1_bdnds:
@@ -88,10 +87,10 @@ if dist1==pridist:
             if AdjFlag==True:
                 break
             else:
-                with arcpy.da.SearchCursor(neighbor_list, "*", """{}={} AND {}={}""".format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist2)) as cursor:
+                with arcpy.da.SearchCursor(neighbor_list, ["src_SOURCE_ID", "nbr_SOURCE_ID"], """{}={} AND {}={}""".format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist2)) as cursor:
                     for row in cursor:
                         AdjFlag = True
-                        arcpy.AddMessage("Adjacency Established between districts {0} and {1} by units {2} and {3}".format(dist1, dist2, row[1],row[2]))
+                        arcpy.AddMessage("Adjacency Established between districts {0} and {1} by units {2} and {3}".format(dist1, dist2, row[0],row[1]))
                         break
     if AdjFlag==False:
         arcpy.AddError("Districts {0} and {1} are not Adjacent".format(dist1, dist2))
@@ -103,10 +102,11 @@ if dist2==pridist:
             if AdjFlag==True:
                 break
             else:
-                with arcpy.da.SearchCursor(neighbor_list, "*", """{}={} AND {}={}""".format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist1)) as cursor:        
+                with arcpy.da.SearchCursor(neighbor_list, ["src_SOURCE_ID", "nbr_SOURCE_ID"], """{}={} AND {}={}""".format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist1)) as cursor:
                     for row in cursor:
                         AdjFlag = True
-                        arcpy.AddMessage("Adjacency Established between districts {0} and {1} by units {2} and {3}".format(dist1, dist2, row[1],row[2]))
+                        arcpy.AddMessage("Adjacency Established between districts {0} and {1} by units {2} and {3}".format(dist1, dist2, row[0],row[1]))
+                        break
     if AdjFlag==False:
         arcpy.AddError("Districts {0} and {1} are not Adjacent".format(dist1, dist2))
         
