@@ -4,7 +4,7 @@ Created on Thu May  6 17:21:17 2021
 
 @author: blake
 """
-
+runspot = "ArcGIS"
 import arcpy, os
 
 def FindBoundaryShapes(in_table,neighbor_list,fields):
@@ -24,16 +24,16 @@ def FindNamingFields(in_table):
     return(namefields,distfields)
 
 def MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression):          
-#        arcpy.AddMessage("in_row[0] = {}".format(in_row[0]))
-#        arcpy.AddMessage("in_row[1] = {}".format(in_row[1]))
+#        arcprint("in_row[0] = {0}",in_row[0])
+#        arcprint("in_row[1] = {0}",in_row[1])
         for i in range(srclen):
 #            shape_name[i] = in_row[i]
-#            arcpy.AddMessage("shape_name[{0}] = {1}".format(i,shape_name[i]))
+#            arcprint("shape_name[{0}] = {1}",i,shape_name[i])
             if isinstance(in_row[i],str):
                 expression[i] = "{0} = '{1}'".format(fields4nbrlist[i],in_row[i])
             else:
                 expression[i] = "{0} = {1}".format(fields4nbrlist[i],in_row[i])
-#            arcpy.AddMessage("expression[{0}] is {1}".format(i, expression[i]))
+#            arcprint("expression[{0}] is {1}",i, expression[i])
             #Creates an SQL expression that is used in SearchCursor
             if i!=0:
                 comboexpression = comboexpression + " AND " + expression[i]
@@ -41,6 +41,29 @@ def MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression):
                 comboexpression = expression[i]
         return(comboexpression)
         
+def arcprint(message,*variables):
+    '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddMessage(message.format(*variables))
+    else: 
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            j=j+1
+        print(newmessage)
+        
+def arcerror(message,*variables):
+    '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddError(message.format(*variables))
+    else: 
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            j=j+1
+        raise NameError(newmessage)
 
 
 ### START MAIN CODE
@@ -51,15 +74,19 @@ arcpy.env.workspace = path
 in_table = arcpy.GetParameterAsText(0) #Input polygon file
 #TypeOfNbr = arcpy.GetParameterAsText(1) #User input that declares whether we want district neighbors or shape neighbors
 
+if in_table == '':
+    in_table = path + "\\Precincts_2020_SpatiallyConstrainedMultivariateClustering"
+    runspot = "console"
+
 [namefields,distfields] = FindNamingFields(in_table)
 all_fields = [item for sublist in [namefields, distfields] for item in sublist]
-#arcpy.AddMessage("namefields = {}".format(namefields))
-#arcpy.AddMessage("[namefields, distfields] = {}".format([namefields,distfields]))
+#arcprint("namefields = {0}",namefields)
+#arcprint("[namefields, distfields] = {0}"[namefields,distfields])
 
 if namefields == []:
-    arcpy.AddMessage("Warning: the 'namefields' parameter is empty in PolygonNeighbors analysis.")
+    arcprint("Warning: the 'namefields' parameter is empty in PolygonNeighbors analysis.")
 if distfields == []:
-    arcpy.AddMessage("Warning: the 'distfields' parameter is empty in PolygonNeighbors analysis.")
+    arcprint("Warning: the 'distfields' parameter is empty in PolygonNeighbors analysis.")
 
 #Creates a neighbor list if one currently does not exist
 neighbor_list = in_table + "_neighbor_list_shapes"
@@ -76,7 +103,7 @@ nbrdistfields = distfields
 
 #for field in srcnamefields:
 #    field = "src_" + field
-#    arcpy.AddMessage("field = {}".format(field))
+#    arcprint("field = {0}", field)
 #    srcnamefields[0] 
 
 srcnamefields = ["src_" + s for s in srcnamefields]
@@ -86,21 +113,21 @@ nbrdistfields = ["nbr_" + s for s in nbrdistfields]
 
 #Finds number of srcnamefields
 srclen = len(srcnamefields)
-arcpy.AddMessage("srclen = {}".format(srclen))
+arcprint("srclen = {0}", srclen)
 
 #Finds length of all field categories
 nbrlen = len(nbrnamefields)
-arcpy.AddMessage("nbrlen = {}".format(nbrlen))
+arcprint("nbrlen = {0}", nbrlen)
 srcdistlen = len(srcdistfields)
-arcpy.AddMessage("srcdistlen = {}".format(srcdistlen))
+arcprint("srcdistlen = {0}",srcdistlen)
 nbrdistlen = len(nbrdistfields)
-arcpy.AddMessage("nbrdistlen = {}".format(nbrdistlen))
+arcprint("nbrdistlen = {0}",nbrdistlen)
 
 fieldList = arcpy.ListFields(in_table)    
 fieldNames = [f.name for f in fieldList]
 
 #src_string = "'" + "','".join(srcnamefields) + "'"
-#arcpy.AddMessage("string = {}".format(src_string))
+#arcprint("string = {0}",src_string)
 
 if "Boundary" not in fieldNames:
     arcpy.management.AddField(in_table, "Boundary", "SHORT")
@@ -109,31 +136,31 @@ if "Boundary" not in fieldNames:
 fields4in_table = [namefields]
 fields4in_table = [item for sublist in fields4in_table for item in sublist] #This line feels unnecessary?
 fields4in_table.append("Boundary")
-arcpy.AddMessage("fields4in_table={}".format(fields4in_table))
+arcprint("fields4in_table={0}",fields4in_table)
 in_tab_len = len(fields4in_table)
 #Creates field names for use in nbrlist cursor actions
 fields4nbrlist = [srcnamefields, nbrnamefields, srcdistfields, nbrdistfields]
 fields4nbrlist = [item for sublist in fields4nbrlist for item in sublist]
 fields4nbrlist.append("NODE_COUNT")
-arcpy.AddMessage("fields4nbrlist={}".format(fields4nbrlist))
+arcprint("fields4nbrlist={0}",fields4nbrlist)
 
 shape_name = [0] * srclen
 expression = [None] * srclen
 comboexpression = None
 
-#arcpy.AddMessage("[namefields, 'Boundary']={}".format([namefields, "Boundary"]))
+#arcprint("[namefields, 'Boundary']={0}",[namefields, "Boundary"])
 with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
     for in_row in in_cursor:
         in_row[in_tab_len -1]=0
         boundaryflag=0
         comboexpression = MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression)
-        arcpy.AddMessage("comboexpression is {}".format(comboexpression))
+        arcprint("comboexpression is {0}",comboexpression)
         with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
             for row in cursor:   
-                arcpy.AddMessage("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}".format(row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen]))
+                arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
                 if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
                     boundaryflag = 1 #shape is on a boundary
-                    arcpy.AddMessage("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}".format(srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen]))
+                    arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
                     break
         if boundaryflag ==1:
             in_row[in_tab_len-1]=1

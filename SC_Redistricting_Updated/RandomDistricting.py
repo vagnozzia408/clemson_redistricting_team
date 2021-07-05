@@ -7,15 +7,41 @@ Created on Thu Apr 22 16:57:08 2021
 
 "The goal of this code is to create a random contiguous districting on the polygons given as input"
 
-import arcpy, numpy
+runspot="ArcGIS"
 
+import arcpy, numpy, os
+
+def arcprint(message,*variables):
+    '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddMessage(message.format(*variables))
+    else: 
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            j=j+1
+        print(newmessage)
+        
+def arcerror(message,*variables):
+    '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddError(message.format(*variables))
+    else: 
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            j=j+1
+        raise NameError(newmessage)
 
 ### START MAIN CODE
 # Set property to overwrite existing output, by default
 arcpy.env.overwriteOutput = False
 
 # Set environment settings
-path = r"C:\Users\blake\Documents\Clemson Materials\Research\Saltzman Research\clemson_redistricting_team\SC_Redistricting_Updated\SC_Redistricting_Updated.gdb"
+currentdir = os.getcwd()
+path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 
 in_table = arcpy.GetParameterAsText(0) #Input Table
