@@ -25,6 +25,7 @@ import arcpy, os
 import random
 seed = 1203971
 random.seed(seed)
+from random import randint
 import networkx as nx
 
 runspot = "ArcGIS" #Global variable that will determine whether the code is started from ArcGIS or the Python console
@@ -123,7 +124,7 @@ if methodtype=='' and neighbor_list=='' and dist1=='' and dist2=='' and shapefil
     methodtype = "Enter Neighbors List"
     neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
     dist1="2"
-    dist2="2"
+    dist2="7"
     shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
     runspot = "console"
     arcprint("We are running this script from the Spyder IDE")
@@ -220,3 +221,10 @@ arcprint("Vertices of G are {0}",G.nodes)
 #T = nx.minimum_spanning_tree(G,algorithm='kruskal')
 T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
 arcprint("T edges are {0}",T.edges)
+
+edge_to_delete_idx = randint(0,len(list(T.edges))-1)
+edge_to_delete = list(T.edges)[edge_to_delete_idx]
+e= edge_to_delete
+T.remove_edge(*e)
+subgraphs = nx.connected_components(T)
+arcprint("The subgraphs are {0}.",list(subgraphs))
