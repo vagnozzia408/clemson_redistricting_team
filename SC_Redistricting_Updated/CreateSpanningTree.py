@@ -21,6 +21,7 @@ a spanning tree on the resulting subgraph.
 #8. Allow Python users to specify input easily.
 #9. Find an easier way to determine whether we're running from within Python or ArcGIS
 #10. Generalize field names for 'shapefile'
+#11. Figure out how to cut edges and find subtree efficiently.
 
 import arcpy, os
 import random
