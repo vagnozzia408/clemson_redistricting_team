@@ -114,136 +114,128 @@ def arcerror(message,*variables):
 currentdir = os.getcwd()
 path = currentdir + "\\SC_Redistricting_Updated.gdb"
 
-methodtype = arcpy.GetParameterAsText(0)
-neighbor_list=arcpy.GetParameterAsText(1)
-dist1=arcpy.GetParameterAsText(2)
-dist2=arcpy.GetParameterAsText(3)
-shapefile=arcpy.GetParameterAsText(4)
+## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGis
+StopCriterion = False #Currently runs 3 iterations of successfully finding adjacent districts then quits. 
+IterationCount = 0
+while StopCriterion == False:
+
+    methodtype = arcpy.GetParameterAsText(0)
+    neighbor_list=arcpy.GetParameterAsText(1)
+    dist1=arcpy.GetParameterAsText(2)
+    dist2=arcpy.GetParameterAsText(3)
+    shapefile=arcpy.GetParameterAsText(4)
 
 
-#This defaults to a test case map if running from the python console
-if methodtype=='' and neighbor_list=='' and dist1=='' and dist2=='' and shapefile=='':
-    methodtype = "Enter Neighbors List"
-    neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
-    dist1="2"
-    dist2="7"
-    shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-    runspot = "console"
-    arcprint("We are running this script from the Spyder IDE")
+    if methodtype=='' and neighbor_list=='' and dist1=='' and dist2=='' and shapefile=='':
+        methodtype = "Enter Neighbors List"
+        neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
+        #dist1="2"
+        dist1=randint(1,7) #Randomly selecting districts
+        #dist2="7"
+        dist2=randint(1,7) #Randonly selecting districts
+        shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+        runspot = "console"
+        arcprint("We are running this script from the Spyder IDE")
 
-if dist1==dist2:
-    arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2)
-arcprint("neighbor_list is {0} and has type {1}",  neighbor_list, type(neighbor_list))
+    if dist1==dist2:
+        #arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2)
+        arcprint("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Instead of breaking the system, we return to picking new districts
+        arcprint("neighbor_list is {0} and has type {1}",  neighbor_list, type(neighbor_list))
+        continue
 
+    dist1=int(dist1)
+    dist2=int(dist2)
 
-dist1=int(dist1)
-dist2=int(dist2)
+    [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
+    NFL = len(namefields) #NFL = Name Field Length (How many fields name the polygons)
+    DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
 
-[namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
-NFL = len(namefields) #NFL = Name Field Length (How many fields name the polygons)
-DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
-
-"""arcprint("NFL = {0}", NFL)
-arcprint("DFL = {0}", DFL)"""
+    """arcprint("NFL = {0}", NFL)
+    arcprint("DFL = {0}", DFL)"""
 
 ## Where Amy's code edits start.
-dist1_bdnds = [] #Creates empty list of boundary units for dist1
-dist2_bdnds = [] #Creates empty list of boundary units for dist2
+    dist1_bdnds = [] #Creates empty list of boundary units for dist1
+    dist2_bdnds = [] #Creates empty list of boundary units for dist2
 
-#Fills list of boundary units for dist1 and dist2  ## Need to work out how to limits the columns in SearchCursor below to row[2],row[8],row[9].
-with arcpy.da.SearchCursor(shapefile, ["OBJECTID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
+#Fills list of boundary units for dist1 and dist2
+    with arcpy.da.SearchCursor(shapefile, ["OBJECTID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
                            format("Boundary",1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
-    for row in cursor:
-        if row[1]==dist1: #If ClusterID==dist1 and Boundary unit is Yes
-            if dist1_bdnds.count(row[0])==0: #If we haven't already added the unit, add it to the list
-                dist1_bdnds.append(row[0])
-        if row[1]==dist2: #If ClusterID==dist2 and Boundary unit is Yes
-            if dist2_bdnds.count(row[0])==0:  #If we haven't already added the unit, add it to the list
-                dist2_bdnds.append(row[1])
-if len(dist1_bdnds)<=len(dist2_bdnds): #Determine the district with the fewest boundary units
-    pridist = dist1
-    secdist = dist2
-if len(dist1_bdnds)>len(dist2_bdnds):
-    pridist = dist2
-    secdist = dist1
+        for row in cursor:
+            if row[1]==dist1: #If ClusterID==dist1 and Boundary unit is Yes
+                if dist1_bdnds.count(row[0])==0: #If we haven't already added the unit, add it to the list
+                    dist1_bdnds.append(row[0])
+            if row[1]==dist2: #If ClusterID==dist2 and Boundary unit is Yes
+                if dist2_bdnds.count(row[0])==0:  #If we haven't already added the unit, add it to the list
+                    dist2_bdnds.append(row[1])
+    if len(dist1_bdnds)<=len(dist2_bdnds): #Determine the district with the fewest boundary units
+        pridist = dist1
+        secdist = dist2
+    if len(dist1_bdnds)>len(dist2_bdnds):
+        pridist = dist2
+        secdist = dist1
 
-# The current coding below has the fault of moving through all elements in dist#_bdnds one at a time.
-AdjFlag = False
-UnitsChecked = 0
-if dist1==pridist:
-    while AdjFlag==False and UnitsChecked<len(dist1_bdnds):
-        for unit in dist1_bdnds:
-            UnitsChecked += 1
-            if AdjFlag==True:
-                break
-            else:
-                with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """{}={} AND {}={}""".
-                                           format("src_OBJECTID", unit,"nbr_CLUSTER_ID",dist2)) as cursor:
-                    for row in cursor:
-                        AdjFlag = True
-                        arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
-                        break
-    if AdjFlag==False:
-        arcerror("Districts {0} and {1} are not adjacent.",dist1, dist2)
-
-if dist2==pridist:
-    while AdjFlag==False and UnitsChecked<len(dist2_bdnds):
-        for unit in dist2_bdnds:
-            UnitsChecked += 1
-            if AdjFlag==True:
-                break
-            else:
-                with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """{}={} AND {}={}""".format("src_OBJECTID", unit,"nbr_CLUSTER_ID",dist1)) as cursor:
-                    for row in cursor:
-                        AdjFlag = True
-                        arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}",dist1, dist2, row[0],row[1])
-                        break
-    if AdjFlag==False:
-        arcerror("Districts {0} and {1} are not adjacent.",dist1, dist2)
+    AdjFlag = False
+    if dist1==pridist:
+        dist_tuple = tuple(dist1_bdnds)
+    else: 
+        dist_tuple = tuple(dist2_bdnds)
+    with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """({} IN {}) AND {}={}""".
+                                   format("src_OBJECTID", dist_tuple,"nbr_CLUSTER_ID",secdist)) as cursor:
+        for row in cursor:
+            AdjFlag = True
+            arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", pridist, secdist, row[0],row[1])
+            break
+    if AdjFlag==False: #Instead of breaking we return back to pick new districts
+        arcprint("Districts {0} and {1} are not adjacent.",pridist, secdist)
+        continue
 
 ## Where Amy's code edits end.
 
-G = nx.Graph() #Creates an empty graph
-nodes = [] #Creates empty node list
-edges = [] #Creates empty edge list
+    G = nx.Graph() #Creates an empty graph
+    nodes = [] #Creates empty node list
+    edges = [] #Creates empty edge list
 
 # Following line requires two-sided neighbor relationship. Maybe fix later.
-with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
-    for row in cursor:
-        if nodes.count(row[0])==0:
-            nodes.append(row[0]) # If the node is not in the nodes list, add it
-            G.add_node(row[0])
-        if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
-            edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
-            G.add_edge(row[0],row[1])
+    with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
+        for row in cursor:
+            if nodes.count(row[0])==0:
+                nodes.append(row[0]) # If the node is not in the nodes list, add it
+                G.add_node(row[0])
+            if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
+                edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
+                G.add_edge(row[0],row[1])
 
 
-pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
+    pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
 #NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
-with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
-    for row in cursor:
-        pop_num[row[0]] = row[1] #For each node, we associate its population
+    with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
+        for row in cursor:
+            pop_num[row[0]] = row[1] #For each node, we associate its population
 
-pop_num=dict(pop_num)
-nx.set_node_attributes(G,pop_num,"Population")       
+    pop_num=dict(pop_num)
+    nx.set_node_attributes(G,pop_num,"Population")       
 
-arcprint("Edges of G are {0}",G.edges)
-arcprint("Vertices of G are {0}",G.nodes)
+    arcprint("Edges of G are {0}",G.edges)
+    arcprint("Vertices of G are {0}",G.nodes)
 
 #T = nx.minimum_spanning_tree(G,algorithm='kruskal')
-T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
-arcprint("T edges are {0}",T.edges)
-nx.set_node_attributes(T,pop_num,"Population") 
-rand_edge_idx_list = numpy.random.permutation(len(list(G.edges)))
-
-for i in rand_edge_idx_list:
-    edge_to_delete_idx = rand_edge_idx_list[i]
-    ###NEED TO FIGURE OUT HOW TO EXTRACT ONLY NODES FROM EACH SUBGRAPH
+    T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
+    arcprint("T edges are {0}",T.edges)
+    nx.set_node_attributes(T,pop_num,"Population") 
+    rand_edge_idx_list = numpy.random.permutation(len(list(G.edges)))
     
-edge_to_delete_idx = randint(0,len(list(T.edges))-1)
-edge_to_delete = list(T.edges)[edge_to_delete_idx]
-e= edge_to_delete
-T.remove_edge(*e)
-subgraphs = nx.connected_components(T)
-subgraphs_lst = list(subgraphs)
-arcprint("The subgraphs are {0}.",subgraphs_lst)
+    for i in rand_edge_idx_list:
+        edge_to_delete_idx = rand_edge_idx_list[i]
+        ###NEED TO FIGURE OUT HOW TO EXTRACT ONLY NODES FROM EACH SUBGRAPH
+        
+    edge_to_delete_idx = randint(0,len(list(T.edges))-1)
+    edge_to_delete = list(T.edges)[edge_to_delete_idx]
+    e= edge_to_delete
+    T.remove_edge(*e)
+    subgraphs = nx.connected_components(T)
+    subgraphs_lst = list(subgraphs)
+    arcprint("The subgraphs are {0}.",subgraphs_lst)
+    
+    IterationCount += 1
+    if IterationCount==3:
+        StopCriterion = True
