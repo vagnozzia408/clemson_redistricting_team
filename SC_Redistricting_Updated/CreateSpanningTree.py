@@ -20,6 +20,7 @@ a spanning tree on the resulting subgraph.
 #7. Need to determine how to split the spanning tree into two pieces and recover the two pieces. IDEA: maybe networkx has some functionality that will let it determine which edges are in which tree
 #8. Allow Python users to specify input easily.
 #9. Find an easier way to determine whether we're running from within Python or ArcGIS
+#10. Generalize field names for 'shapefile'
 
 import arcpy, os
 import random
@@ -27,6 +28,7 @@ seed = 1203971
 random.seed(seed)
 from random import randint
 import networkx as nx
+import numpy
 
 runspot = "ArcGIS" #Global variable that will determine whether the code is started from ArcGIS or the Python console
 
@@ -149,8 +151,8 @@ dist1_bdnds = [] #Creates empty list of boundary units for dist1
 dist2_bdnds = [] #Creates empty list of boundary units for dist2
 
 #Fills list of boundary units for dist1 and dist2  ## Need to work out how to limits the columns in SearchCursor below to row[2],row[8],row[9].
-with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
-                           format("Boundary", 1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
+with arcpy.da.SearchCursor(shapefile, ["OBJECTID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
+                           format("Boundary",1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
     for row in cursor:
         if row[1]==dist1: #If ClusterID==dist1 and Boundary unit is Yes
             if dist1_bdnds.count(row[0])==0: #If we haven't already added the unit, add it to the list
@@ -175,8 +177,8 @@ if dist1==pridist:
             if AdjFlag==True:
                 break
             else:
-                with arcpy.da.SearchCursor(neighbor_list, ["src_SOURCE_ID", "nbr_SOURCE_ID"], """{}={} AND {}={}""".
-                                           format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist2)) as cursor:
+                with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """{}={} AND {}={}""".
+                                           format("src_OBJECTID", unit,"nbr_CLUSTER_ID",dist2)) as cursor:
                     for row in cursor:
                         AdjFlag = True
                         arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
@@ -191,7 +193,7 @@ if dist2==pridist:
             if AdjFlag==True:
                 break
             else:
-                with arcpy.da.SearchCursor(neighbor_list, ["src_SOURCE_ID", "nbr_SOURCE_ID"], """{}={} AND {}={}""".format("src_SOURCE_ID", unit,"nbr_CLUSTER_ID",dist1)) as cursor:
+                with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """{}={} AND {}={}""".format("src_OBJECTID", unit,"nbr_CLUSTER_ID",dist1)) as cursor:
                     for row in cursor:
                         AdjFlag = True
                         arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}",dist1, dist2, row[0],row[1])
@@ -215,16 +217,33 @@ with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".f
             edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
             G.add_edge(row[0],row[1])
 
+
+pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
+#NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
+with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
+    for row in cursor:
+        pop_num[row[0]] = row[1] #For each node, we associate its population
+
+pop_num=dict(pop_num)
+nx.set_node_attributes(G,pop_num,"Population")       
+
 arcprint("Edges of G are {0}",G.edges)
 arcprint("Vertices of G are {0}",G.nodes)
 
 #T = nx.minimum_spanning_tree(G,algorithm='kruskal')
 T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
 arcprint("T edges are {0}",T.edges)
+nx.set_node_attributes(T,pop_num,"Population") 
+rand_edge_idx_list = numpy.random.permutation(len(list(G.edges)))
 
+for i in rand_edge_idx_list:
+    edge_to_delete_idx = rand_edge_idx_list[i]
+    ###NEED TO FIGURE OUT HOW TO EXTRACT ONLY NODES FROM EACH SUBGRAPH
+    
 edge_to_delete_idx = randint(0,len(list(T.edges))-1)
 edge_to_delete = list(T.edges)[edge_to_delete_idx]
 e= edge_to_delete
 T.remove_edge(*e)
 subgraphs = nx.connected_components(T)
-arcprint("The subgraphs are {0}.",list(subgraphs))
+subgraphs_lst = list(subgraphs)
+arcprint("The subgraphs are {0}.",subgraphs_lst)
