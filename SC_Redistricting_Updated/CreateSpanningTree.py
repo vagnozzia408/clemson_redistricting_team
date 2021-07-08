@@ -25,11 +25,11 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os
 import random
-seed = 1203971
+seed = 1738
 random.seed(seed)
 from random import randint
 import networkx as nx
-import numpy
+#import numpy ### WE SHOULD TRY TO USE ONLY 'RANDOM' IF WE CAN
 
 runspot = "ArcGIS" #Global variable that will determine whether the code is started from ArcGIS or the Python console
 
@@ -86,6 +86,41 @@ def wilson(graph, rng):
 
     return uniformTree
 
+def FindEdgeCut(tree,tol,criteria):
+    '''Input a tree graph, a percent tolerance, and a criteria for the graph. The function will remove a 
+    random edge that splits the tree into two pieces such that each piece 
+    has criteria (like population) within that percent tolerance. The variable 'tol' should be a positive real 
+    number in (0,100]. The criteria should be string that labels an attribute of the nodes of the tree.'''
+    if tol > 100 or tol <=0 or (isinstance(tol,float)==False and isinstance(tol,int)==False): 
+        arcerror("tol must be a float variable in the range (0,100].")
+    if nx.is_tree(tree) == False:
+        arcerror("The input graph must be a tree.")
+    if isinstance(criteria,str)==False:
+        arcerror("The criteria input should be a string.")
+    tree_edge_list = list(tree.edges)
+    random.shuffle(tree_edge_list) #Randomly shuffles the edges of T
+    e=None
+    TELL= len(tree_edge_list)
+    
+    for i in range(TELL):
+        e = tree_edge_list[i] #Edge to delete
+        tree.remove_edge(*e)
+        #arcprint("The edges of T are now {0}. We just deleted {1}.",tree.edges,e)
+        subgraphs = nx.connected_components(tree)
+        subgraphs_lst = list(subgraphs)
+        arcprint("The subgraph candidates are {0}.",subgraphs_lst)
+        dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
+        dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
+        total_crit= dist_crit1+dist_crit2
+        #arcprint("The two new district populations are {0} and {1}, for dist1 and dist2, respectively",dist_crit1,dist_crit2)
+        if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
+            tree.add_edge(*e)
+        else:
+            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i,subgraphs_lst,criteria,dist_crit1,dist_crit2)
+            break
+        if i==TELL-1:
+            arcprint("No subgraphs with appropriate criteria requirements were found.\n")
+
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
@@ -115,7 +150,7 @@ def arcerror(message,*variables):
 currentdir = os.getcwd()
 path = currentdir + "\\SC_Redistricting_Updated.gdb"
 
-## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGis
+## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGIS
 StopCriterion = False #Currently runs 3 iterations of successfully finding adjacent districts then quits. 
 IterationCount = 0
 while StopCriterion == False:
@@ -137,6 +172,8 @@ while StopCriterion == False:
         shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
         runspot = "console"
         arcprint("We are running this script from the Spyder IDE")
+    else: 
+        arcprint("We are running this script from inside ArcGIS")
 
     if dist1==dist2:
         #arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2)
@@ -219,24 +256,12 @@ while StopCriterion == False:
     arcprint("Edges of G are {0}",G.edges)
     arcprint("Vertices of G are {0}",G.nodes)
 
-#T = nx.minimum_spanning_tree(G,algorithm='kruskal')
+    #T = nx.minimum_spanning_tree(G,algorithm='kruskal')
     T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
     arcprint("T edges are {0}",T.edges)
     nx.set_node_attributes(T,pop_num,"Population") 
-    rand_edge_idx_list = numpy.random.permutation(len(list(G.edges)))
-    
-    for i in rand_edge_idx_list:
-        edge_to_delete_idx = rand_edge_idx_list[i]
-        ###NEED TO FIGURE OUT HOW TO EXTRACT ONLY NODES FROM EACH SUBGRAPH
-        
-    edge_to_delete_idx = randint(0,len(list(T.edges))-1)
-    edge_to_delete = list(T.edges)[edge_to_delete_idx]
-    e= edge_to_delete
-    T.remove_edge(*e)
-    subgraphs = nx.connected_components(T)
-    subgraphs_lst = list(subgraphs)
-    arcprint("The subgraphs are {0}.",subgraphs_lst)
+    FindEdgeCut(T,30,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance
     
     IterationCount += 1
-    if IterationCount==3:
+    if IterationCount==1:
         StopCriterion = True
