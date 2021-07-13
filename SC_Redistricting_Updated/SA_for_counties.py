@@ -10,6 +10,8 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,numpy,random,math,sys,os
 
+runspot = "ArcGIS"
+
 def FieldCheck(in_table):
     lstFields = arcpy.ListFields(in_table)
     DistField = "Dist_Assgn"
@@ -35,6 +37,30 @@ def FindBoundaryShapes(in_table,neighbor_list):
     if neighbor_list == None:
         uniquename = arcpy.CreateUniqueName(in_table + "_neighbor_list")
         arcpy.PolygonNeighbors_analysis(in_table, uniquename,None,None,None,None,"KILOMETERS")
+        
+def arcprint(message,*variables):
+    '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddMessage(message.format(*variables))
+    else:
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
+            j=j+1
+        print(newmessage)
+
+def arcerror(message,*variables):
+    '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddError(message.format(*variables))
+    else:
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
+            j=j+1
+        raise RuntimeError(newmessage)
 
 ### START MAIN CODE
 # Set environment settings
@@ -43,9 +69,15 @@ path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 
 in_table=arcpy.GetParameterAsText(0)
+distcount=arcpy.GetParameterAsText(1)
+
+if in_table == "" and distcount == "":
+    in_table = path + "//SC_Counties_2020"
+    distcount = "7"
+    runspot = "console"
+    arcprint("We are running this from the Spyder IDE.")
 
 #User-defined variables
-distcount=arcpy.GetParameterAsText(1)
 distcount = round(float(distcount))
 T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
 MaxIter =1000 #Maximum number of iterations to run
@@ -53,7 +85,7 @@ MaxIter =1000 #Maximum number of iterations to run
 
 #Returns DistField "Dist_Assgn" and creates the field if it's not already there
 DistField = FieldCheck(in_table)
-arcpy.AddMessage("DistField is {}".format(DistField))
+arcprint("DistField is {0}",DistField)
 
 #Generates random district assignments for each county
 with arcpy.da.UpdateCursor(in_table, DistField) as cursor:
@@ -71,8 +103,7 @@ for field in lstFields:
     if field.name == "SUM_Popula" or field.name == "Precinct_P":
         popfield = field.name
 if popfield == None:
-    arcpy.AddMessage("popfield is empty. Neither 'SUM_Popula' nor 'Precinct_P' were found as field names.")
-    sys.exit()
+    arcerror("popfield is empty. Neither 'SUM_Popula' nor 'Precinct_P' were found as field names.")
 
 #Finds sum of each district population
 sumpop=[]
@@ -83,18 +114,18 @@ with arcpy.da.SearchCursor(in_table, [popfield,DistField]) as cursor:
         i = row[1]-1
         i = int(i)
         sumpop[i] = row[0] + sumpop[i]
-arcpy.AddMessage("sumpop is {0}".format(sumpop))
+arcprint("sumpop is {0}",sumpop)
 idealpop=sum(sumpop)/distcount    
 deviation =[0]*(MaxIter+1)        
 deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
 
 lstFields = arcpy.ListFields(in_table)
 ObjectID = lstFields[0].name
-arcpy.AddMessage("ObjectID = {}".format(ObjectID))
+arcprint("ObjectID = {0}",ObjectID)
 
 count = 0
 while T>0.1 and count <MaxIter:
-    arcpy.AddMessage("count = {}. About to add 1.".format(count))
+    arcprint("count = {0}. About to add 1.",count)
     count = count+1
     randshape = numpy.random.randint(0,row_count)
     with arcpy.da.UpdateCursor(in_table, [ObjectID, DistField, popfield],"{0} = {1}".format(ObjectID,randshape)) as cursor:
@@ -109,12 +140,12 @@ while T>0.1 and count <MaxIter:
             sumpop[currdist-1] = sumpop[currdist-1] - distpop
             #adds population to district that just gained people
             sumpop[newdist-1] = sumpop[newdist-1] + distpop
-            #arcpy.AddMessage("sumpop is {0}".format(sumpop)) 
+            #arcprint("sumpop is {0}",sumpop) 
             cursor.updateRow(row)   
     deviation[count] = DeviationFromIdealPop(sumpop,idealpop,distcount)
-    #arcpy.AddMessage("absolute deviation is {0}".format(deviation[count]))    
+    #arcprint("absolute deviation is {0}",deviation[count])    
     DeltaE = deviation[count] - deviation[count-1]
-    arcpy.AddMessage("DeltaE = {:.2f}. T = {:.2f}".format(DeltaE,T))
+    arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
     if DeltaE <0:
         T = T*.997
         continue
@@ -124,7 +155,7 @@ while T>0.1 and count <MaxIter:
             p = 1/math.exp(DeltaE/T)
         except OverflowError:
             p = 0
-        arcpy.AddMessage("p = {:.4f}. rand = {:.4f}".format(p,rand))
+        arcprint("p = {0}. rand = {1}",p,rand)
         if rand<=p:
             T = T*.999
             continue
@@ -136,7 +167,7 @@ while T>0.1 and count <MaxIter:
                 for row in cursor:
                     row[1] = currdist
                     cursor.updateRow(row)
-arcpy.AddMessage("Original deviation = {}. Final deviation = {}".format(deviation[2],deviation[MaxIter]))
-arcpy.AddMessage("sumpop is {}".format(sumpop))
+arcprint("Original deviation = {0}. Final deviation = {1}",deviation[2],deviation[MaxIter])
+arcprint("sumpop is {0}",sumpop)
     
             

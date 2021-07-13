@@ -25,7 +25,7 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os
 import random
-seed = 1738
+seed = 17389
 random.seed(seed)
 from random import randint
 import networkx as nx
@@ -100,7 +100,7 @@ def FindEdgeCut(tree,tol,criteria):
     tree_edge_list = list(tree.edges)
     random.shuffle(tree_edge_list) #Randomly shuffles the edges of T
     e=None
-    TELL= len(tree_edge_list)
+    TELL= len(tree_edge_list) #TELL = Tree Edge List Length
     
     for i in range(TELL):
         e = tree_edge_list[i] #Edge to delete
@@ -165,10 +165,10 @@ while StopCriterion == False:
     if methodtype=='' and neighbor_list=='' and dist1=='' and dist2=='' and shapefile=='':
         methodtype = "Enter Neighbors List"
         neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
-        #dist1="2"
-        dist1=randint(1,7) #Randomly selecting districts
-        #dist2="7"
-        dist2=randint(1,7) #Randonly selecting districts
+        dist1="3"
+        #dist1=randint(1,7) #Randomly selecting districts
+        dist2="1"
+        #dist2=randint(1,7) #Randonly selecting districts
         shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
         runspot = "console"
         arcprint("We are running this script from the Spyder IDE")
@@ -185,7 +185,7 @@ while StopCriterion == False:
     dist2=int(dist2)
 
     [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
-    NFL = len(namefields) #NFL = Name Field Length (How many fields name the polygons)
+    NFL = len(namefields) #NFL = Name Fields Length (How many fields name the polygons)
     DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
 
     """arcprint("NFL = {0}", NFL)
@@ -204,7 +204,7 @@ while StopCriterion == False:
                     dist1_bdnds.append(row[0])
             if row[1]==dist2: #If ClusterID==dist2 and Boundary unit is Yes
                 if dist2_bdnds.count(row[0])==0:  #If we haven't already added the unit, add it to the list
-                    dist2_bdnds.append(row[1])
+                    dist2_bdnds.append(row[0])
     if len(dist1_bdnds)<=len(dist2_bdnds): #Determine the district with the fewest boundary units
         pridist = dist1
         secdist = dist2

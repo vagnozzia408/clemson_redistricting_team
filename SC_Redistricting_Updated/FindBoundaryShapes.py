@@ -15,12 +15,25 @@ def FindNamingFields(in_table):
     lstFields = arcpy.ListFields(in_table)
     namefields=[]
     distfields=[]
-    for field in lstFields:
-        #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
-        if field.name in  ["GEOID20", "OBJECTID", "FID", "SOURCE_ID"]:
-            namefields.append(field.name)
-        if field.name in ["CLUSTER_ID", "Dist_Assgn"]:
-            distfields.append(field.name)
+    breakflag=0
+    for name in ["GEOID20", "OBJECTID", "FID", "SOURCE_ID"]:
+        for field in lstFields:   
+            if name ==field.name:
+                namefields.append(name)
+                breakflag=1
+                break
+        if breakflag==1:
+            break
+    #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
+    breakflag=0
+    for name in ["CLUSTER_ID", "Dist_Assgn"]:
+        for field in lstFields:
+            if name == field.name:
+                distfields.append(name)
+                breakflag=1
+                break
+        if breakflag==1:
+            break
     return(namefields,distfields)
 
 def MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression):          
@@ -75,7 +88,7 @@ in_table = arcpy.GetParameterAsText(0) #Input polygon file
 #TypeOfNbr = arcpy.GetParameterAsText(1) #User input that declares whether we want district neighbors or shape neighbors
 
 if in_table == '':
-    in_table = path + "\\Precincts_2020_SpatiallyConstrainedMultivariateClustering"
+    in_table = path + "\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
     runspot = "console"
 
 [namefields,distfields] = FindNamingFields(in_table)
@@ -157,7 +170,7 @@ with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
         arcprint("comboexpression is {0}",comboexpression)
         with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
             for row in cursor:   
-                arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
+                #arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
                 if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
                     boundaryflag = 1 #shape is on a boundary
                     arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
