@@ -9,33 +9,44 @@ Created on Thu Apr 22 16:57:08 2021
 
 runspot="ArcGIS"
 
-import arcpy, numpy, os
+import arcpy, numpy, os, sys
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddMessage(message.format(*variables))
-    else: 
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
-            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
-        
+    else: 
+        raise RuntimeError("No value for runspot has been assigned")
+
 def arcerror(message,*variables):
     '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddError(message.format(*variables))
-    else: 
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
-            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
-        raise NameError(newmessage)
+        raise RuntimeError(newmessage)
+    else: 
+        raise RuntimeError("No value for runspot has been assigned")
 
 ### START MAIN CODE
+if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
+    runspot = "ArcGIS"
+    arcprint("We are running this from inside ArcGIS")
+else:
+    runspot = "console"
+    arcprint("We are running this from the python console")
+        
 # Set property to overwrite existing output, by default
 arcpy.env.overwriteOutput = False
 

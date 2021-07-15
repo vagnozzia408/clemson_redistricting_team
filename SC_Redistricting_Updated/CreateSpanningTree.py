@@ -12,26 +12,27 @@ a spanning tree on the resulting subgraph.
 
 ###TO DO:
 "#1. Change asterisk on 'with .... as cursor:' line to include actual field names --- DONE (Blake). "
-#2. Validate that districts are adjacent (Working code in rows 60-106)
-#3. Figure out how to adjust script validation in ArcGIS Pro so that methodtype changes the rest of the input.
+"#2. Validate that districts are adjacent (Working code in rows 60-106) --- DONE (Amy)."
+"#3. Figure out how to adjust script validation in ArcGIS Pro so that methodtype changes the rest of the input. --- CONCLUDED. Determined unnecessary (Blake)" 
 #4. Edit "with .... as cursor:" line to include more robust SQL statement.
 #5. Currently, this code assumes that our neighbor list include both sides of every edge. Should we build it so that it doesn't necessarily assume that?
 "#6. Probably need to hard-code Wilson's algorithm --- DONE (Blake). Taken from Greg's code."
-#7. Need to determine how to split the spanning tree into two pieces and recover the two pieces. IDEA: maybe networkx has some functionality that will let it determine which edges are in which tree
-#8. Allow Python users to specify input easily.
-#9. Find an easier way to determine whether we're running from within Python or ArcGIS
+"#7. Need to determine how to split the spanning tree into two pieces and recover the two pieces. IDEA: maybe networkx has some functionality that will let it determine which edges are in which tree --- DONE (Blake)"
+"#8. Allow Python users to specify input easily. --- DONE (Input can be specified if running this function from a different script by calling CreateSpanningTree.main(***insert args here***), Blake)"
+"#9. Find an easier way to determine whether we're running from within Python or ArcGIS --- DONE. Now the code checks what sys.executable is, rather than examining argument input. (Blake)"
 #10. Generalize field names for 'shapefile'
 #11. Figure out how to cut edges and find subtree efficiently.
 
-import arcpy, os
+import arcpy, os, sys
 import random
 seed = 17389
 random.seed(seed)
 from random import randint
 import networkx as nx
+import runpy
 #import numpy ### WE SHOULD TRY TO USE ONLY 'RANDOM' IF WE CAN
 
-runspot = "ArcGIS" #Global variable that will determine whether the code is started from ArcGIS or the Python console
+runspot = None #Global variable that will determine whether the code is started from ArcGIS or the Python console
 
 def FindNamingFields(in_table):
     lstFields = arcpy.ListFields(in_table)
@@ -112,12 +113,11 @@ def FindEdgeCut(tree,tol,criteria):
         dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
         dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
         total_crit= dist_crit1+dist_crit2
-        #arcprint("The two new district populations are {0} and {1}, for dist1 and dist2, respectively",dist_crit1,dist_crit2)
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
-            tree.add_edge(*e)
+            tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
             arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i,subgraphs_lst,criteria,dist_crit1,dist_crit2)
-            break
+            return(dist_crit1,dist_crit2)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
 
@@ -125,77 +125,88 @@ def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddMessage(message.format(*variables))
-    else:
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
+    else: 
+        raise RuntimeError("No value for runspot has been assigned")
 
 def arcerror(message,*variables):
     '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddError(message.format(*variables))
-    else:
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         raise RuntimeError(newmessage)
-
-
-
-currentdir = os.getcwd()
-path = currentdir + "\\SC_Redistricting_Updated.gdb"
-
-## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGIS
-StopCriterion = False #Currently runs 3 iterations of successfully finding adjacent districts then quits. 
-IterationCount = 0
-while StopCriterion == False:
-
-    methodtype = arcpy.GetParameterAsText(0)
-    neighbor_list=arcpy.GetParameterAsText(1)
-    dist1=arcpy.GetParameterAsText(2)
-    dist2=arcpy.GetParameterAsText(3)
-    shapefile=arcpy.GetParameterAsText(4)
-
-
-    if methodtype=='' and neighbor_list=='' and dist1=='' and dist2=='' and shapefile=='':
-        methodtype = "Enter Neighbors List"
-        neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
-        dist1="3"
-        #dist1=randint(1,7) #Randomly selecting districts
-        dist2="1"
-        #dist2=randint(1,7) #Randonly selecting districts
-        shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-        runspot = "console"
-        arcprint("We are running this script from the Spyder IDE")
     else: 
-        arcprint("We are running this script from inside ArcGIS")
+        raise RuntimeError("No value for runspot has been assigned")
 
+def main(*args):
+    ### MAIN CODE STARTS HERE
+    global runspot #Allows runspot to be changed inside a function
+    
+    if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
+        runspot = "ArcGIS"
+        arcprint("We are running this from inside ArcGIS")
+    else:
+        runspot = "console"
+        arcprint("We are running this from the python console")
+    
+    currentdir = os.getcwd()
+    path = currentdir + "\\SC_Redistricting_Updated.gdb"
+    
+    try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
+        neighbor_list = sys.argv[1]
+        dist1=int(sys.argv[2])
+        dist2=int(sys.argv[3])
+        shapefile=sys.argv[4]
+        tol=float(sys.argv[5])
+    except IndexError: 
+        try: #Second, tries to take input from explicit input into main()
+            neighbor_list = args[0]
+            dist1 = int(args[1])
+            dist2 = int(args[2])
+            shapefile = args[3]
+            tol=float(args[4])
+        except IndexError: #Finally, manually assigns input values if they aren't provided
+            neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
+            dist1=3
+            #dist1=randint(1,7) #Randomly selecting districts
+            dist2=1
+            #dist2=randint(1,7) #Randonly selecting districts
+            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+            tol=30
+            arcprint("We are using default input choices")
+        
+    
+    ## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGIS
+    #StopCriterion = False #Currently runs 3 iterations of successfully finding adjacent districts then quits. 
+    #IterationCount = 0
+    #while StopCriterion == False:
+    
     if dist1==dist2:
         #arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2)
         arcprint("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Instead of breaking the system, we return to picking new districts
         arcprint("neighbor_list is {0} and has type {1}",  neighbor_list, type(neighbor_list))
-        continue
-
-    dist1=int(dist1)
-    dist2=int(dist2)
-
+        #continue
+    
     [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
     NFL = len(namefields) #NFL = Name Fields Length (How many fields name the polygons)
     DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
-
-    """arcprint("NFL = {0}", NFL)
-    arcprint("DFL = {0}", DFL)"""
-
-## Where Amy's code edits start.
+    
+    ## Where Amy's code edits start.
     dist1_bdnds = [] #Creates empty list of boundary units for dist1
     dist2_bdnds = [] #Creates empty list of boundary units for dist2
-
-#Fills list of boundary units for dist1 and dist2
+    
+    #Fills list of boundary units for dist1 and dist2
     with arcpy.da.SearchCursor(shapefile, ["OBJECTID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
                            format("Boundary",1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
         for row in cursor:
@@ -211,7 +222,7 @@ while StopCriterion == False:
     if len(dist1_bdnds)>len(dist2_bdnds):
         pridist = dist2
         secdist = dist1
-
+    
     AdjFlag = False
     if dist1==pridist:
         dist_tuple = tuple(dist1_bdnds)
@@ -225,15 +236,15 @@ while StopCriterion == False:
             break
     if AdjFlag==False: #Instead of breaking we return back to pick new districts
         arcprint("Districts {0} and {1} are not adjacent.",pridist, secdist)
-        continue
-
-## Where Amy's code edits end.
-
+        #continue
+    
+    ## Where Amy's code edits end.
+    
     G = nx.Graph() #Creates an empty graph
     nodes = [] #Creates empty node list
     edges = [] #Creates empty edge list
-
-# Following line requires two-sided neighbor relationship. Maybe fix later.
+    
+    # Following line requires two-sided neighbor relationship. Maybe fix later.
     with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
         for row in cursor:
             if nodes.count(row[0])==0:
@@ -242,26 +253,30 @@ while StopCriterion == False:
             if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
                 edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
                 G.add_edge(row[0],row[1])
-
-
+    
+    
     pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
-#NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
+    #NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
     with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
         for row in cursor:
             pop_num[row[0]] = row[1] #For each node, we associate its population
-
+    
     pop_num=dict(pop_num)
     nx.set_node_attributes(G,pop_num,"Population")       
-
+    
     arcprint("Edges of G are {0}",G.edges)
     arcprint("Vertices of G are {0}",G.nodes)
-
-    #T = nx.minimum_spanning_tree(G,algorithm='kruskal')
+    
     T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
     arcprint("T edges are {0}",T.edges)
     nx.set_node_attributes(T,pop_num,"Population") 
-    FindEdgeCut(T,30,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance
+    [dist1_pop, dist2_pop] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
-    IterationCount += 1
-    if IterationCount==1:
-        StopCriterion = True
+    if __name__ != "__main__":
+        return(dist1_pop, dist2_pop)
+    #    IterationCount += 1
+    #    if IterationCount==1:
+    #        StopCriterion = True
+
+if __name__ == "__main__":
+    main()

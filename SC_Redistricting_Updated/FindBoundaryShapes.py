@@ -5,7 +5,7 @@ Created on Thu May  6 17:21:17 2021
 @author: blake
 """
 runspot = "ArcGIS"
-import arcpy, os
+import arcpy, os, sys
 
 def FindBoundaryShapes(in_table,neighbor_list,fields):
     print("Empty for now")
@@ -58,28 +58,40 @@ def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddMessage(message.format(*variables))
-    else: 
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
-            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
-        
+    else: 
+        raise RuntimeError("No value for runspot has been assigned")
+
 def arcerror(message,*variables):
     '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddError(message.format(*variables))
-    else: 
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
-            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j]))
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
-        raise NameError(newmessage)
+        raise RuntimeError(newmessage)
+    else: 
+        raise RuntimeError("No value for runspot has been assigned")
 
 
 ### START MAIN CODE
+        
+if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
+    runspot = "ArcGIS"
+    arcprint("We are running this from inside ArcGIS")
+else:
+    runspot = "console"
+    arcprint("We are running this from the python console")
+    
 currentdir = os.getcwd()
 path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
@@ -149,13 +161,13 @@ if "Boundary" not in fieldNames:
 fields4in_table = [namefields]
 fields4in_table = [item for sublist in fields4in_table for item in sublist] #This line feels unnecessary?
 fields4in_table.append("Boundary")
-arcprint("fields4in_table={0}",fields4in_table)
+#arcprint("fields4in_table={0}",fields4in_table)
 in_tab_len = len(fields4in_table)
 #Creates field names for use in nbrlist cursor actions
 fields4nbrlist = [srcnamefields, nbrnamefields, srcdistfields, nbrdistfields]
 fields4nbrlist = [item for sublist in fields4nbrlist for item in sublist]
 fields4nbrlist.append("NODE_COUNT")
-arcprint("fields4nbrlist={0}",fields4nbrlist)
+#arcprint("fields4nbrlist={0}",fields4nbrlist)
 
 shape_name = [0] * srclen
 expression = [None] * srclen
@@ -167,13 +179,13 @@ with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
         in_row[in_tab_len -1]=0
         boundaryflag=0
         comboexpression = MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression)
-        arcprint("comboexpression is {0}",comboexpression)
+        #arcprint("comboexpression is {0}",comboexpression)
         with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
             for row in cursor:   
                 #arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
                 if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
                     boundaryflag = 1 #shape is on a boundary
-                    arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
+                    #arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
                     break
         if boundaryflag ==1:
             in_row[in_tab_len-1]=1
