@@ -8,7 +8,13 @@ Created on Thu Apr 15 16:52:28 2021
 ### IS AN ID COLUMN THAT UNIQUELY LABELS EACH ROW WITH THE NUMBERS 1-X, WHERE
 ### X IS THE NUMBER OF ROWS
 
-import arcpy,math,os
+#TO DO LIST
+#1. Change argv stuff
+#2. Consider new starting temperatures and whatnot
+#3. Use build-balanced-zones
+#4. Figure out what to do with x
+
+import arcpy,math,os,sys
 import random
 seed = 1738
 random.seed(seed)
@@ -108,9 +114,11 @@ currentdir = os.getcwd()
 path = currentdir + "\\SC_Redistricting_Updated.gdb"
 arcpy.env.workspace = path
 
+# CHANGE THIS 
 in_table=arcpy.GetParameterAsText(0)
 distcount=arcpy.GetParameterAsText(1)
 
+# THIS TOO
 if in_table == "" and distcount == "":
     in_table = path + "//SC_Counties_2020"
     distcount = "7"
@@ -163,7 +171,7 @@ idealpop=sum(sumpop)/distcount
 deviation =[0]*(MaxIter+1)        
 deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
 
-
+#Maybe delete x from below
 [NameField,x] = FindNamingFields(in_table)
 NameField = NameField[0]
 arcprint("The NameField is '{0}'",NameField)

@@ -43,4 +43,4 @@ path = currentdir + "\\SC_Redistricting_Updated.gdb"
 runspot = "console"
 arcprint("This is an example of how to run python script from another python script. This is test1.py")
 
-[dist1_pop, dist2_pop] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", 1, 3, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1")
+[dist1_pop, dist2_pop] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", 1, 3, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1",30)

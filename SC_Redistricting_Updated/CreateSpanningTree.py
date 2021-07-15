@@ -22,6 +22,7 @@ a spanning tree on the resulting subgraph.
 "#9. Find an easier way to determine whether we're running from within Python or ArcGIS --- DONE. Now the code checks what sys.executable is, rather than examining argument input. (Blake)"
 #10. Generalize field names for 'shapefile'
 #11. Figure out how to cut edges and find subtree efficiently.
+#12. Consider how to change ideal population number as algorithm progresses
 
 import arcpy, os, sys
 import random
@@ -29,7 +30,6 @@ seed = 17389
 random.seed(seed)
 from random import randint
 import networkx as nx
-import runpy
 #import numpy ### WE SHOULD TRY TO USE ONLY 'RANDOM' IF WE CAN
 
 runspot = None #Global variable that will determine whether the code is started from ArcGIS or the Python console
@@ -116,7 +116,7 @@ def FindEdgeCut(tree,tol,criteria):
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
-            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i,subgraphs_lst,criteria,dist_crit1,dist_crit2)
+            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,dist_crit1,dist_crit2)
             return(dist_crit1,dist_crit2)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
