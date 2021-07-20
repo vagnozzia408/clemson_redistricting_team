@@ -23,6 +23,7 @@ a spanning tree on the resulting subgraph.
 #10. Generalize field names for 'shapefile'
 #11. Figure out how to cut edges and find subtree efficiently.
 #12. Consider how to change ideal population number as algorithm progresses
+#13. In nbrlist_fields, account for the 'nodes' column too and adjust the code so that shapes adjacent by a point are not adjacent
 
 import arcpy, os, sys
 import random
@@ -93,7 +94,7 @@ def FindEdgeCut(tree,tol,criteria):
     has criteria (like population) within that percent tolerance. The variable 'tol' should be a positive real 
     number in (0,100]. The criteria should be string that labels an attribute of the nodes of the tree.'''
     if tol > 100 or tol <=0 or (isinstance(tol,float)==False and isinstance(tol,int)==False): 
-        arcerror("tol must be a float variable in the range (0,100].")
+        arcerror("tol must be a float or integer variable in the range (0,100].")
     if nx.is_tree(tree) == False:
         arcerror("The input graph must be a tree.")
     if isinstance(criteria,str)==False:
@@ -120,6 +121,7 @@ def FindEdgeCut(tree,tol,criteria):
             return(dist_crit1,dist_crit2)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
+            return(float('inf'), float('inf'))
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -155,10 +157,12 @@ def main(*args):
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
-        arcprint("We are running this from inside ArcGIS")
+        if __name__ == "__main__":
+            arcprint("We are running this from inside ArcGIS")
     else:
         runspot = "console"
-        arcprint("We are running this from the python console")
+        if __name__=="__main__":
+            arcprint("We are running this from the python console")
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
@@ -193,9 +197,9 @@ def main(*args):
     #while StopCriterion == False:
     
     if dist1==dist2:
-        #arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2)
-        arcprint("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Instead of breaking the system, we return to picking new districts
-        arcprint("neighbor_list is {0} and has type {1}",  neighbor_list, type(neighbor_list))
+        arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Creates an error if the two district choices are the same
+        #arcprint("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Instead of breaking the system, we return to picking new districts
+        #arcprint("neighbor_list is {0} and has type {1}",  neighbor_list, type(neighbor_list))
         #continue
     
     [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
@@ -235,26 +239,51 @@ def main(*args):
             arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", pridist, secdist, row[0],row[1])
             break
     if AdjFlag==False: #Instead of breaking we return back to pick new districts
-        arcprint("Districts {0} and {1} are not adjacent.",pridist, secdist)
+        #I've added back in the error -- Blake
+        arcerror("Districts {0} and {1} are not adjacent.",pridist, secdist)
         #continue
     
     ## Where Amy's code edits end.
     
-    G = nx.Graph() #Creates an empty graph
+    global stateG
+    stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
+    G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     nodes = [] #Creates empty node list
     edges = [] #Creates empty edge list
+    distnum = {} #Initializes a dictionary that will contain the district number for each polygon
     
-    # Following line requires two-sided neighbor relationship. Maybe fix later.
-    with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
-        for row in cursor:
-            if nodes.count(row[0])==0:
-                nodes.append(row[0]) # If the node is not in the nodes list, add it
-                G.add_node(row[0])
-            if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
-                edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
-                G.add_edge(row[0],row[1])
+    """RIGHT NOW, THE CODE FINDS THE GRAPH ON EACH ITERATION FOR THE TWO DISTRICTS. I WOULD INSTEAD LIKE TO CREATE AN ENTIRE ADJACENCY GRAPH FOR THE WHOLE STATE AND ON EACH ITERATION, FIND A SUBGRAPH WITH ONLY THE TWO DISTRICTS"""
     
     
+    if nx.is_empty(stateG)==True:
+        with arcpy.da.SearchCursor(neighbor_list,nbrlist_fields) as cursor:
+            for row in cursor:
+                cursor.reset
+                if list(stateG.nodes).count(row[0])==0:
+                    #nodes.append(row[0])
+                    stateG.add_node(row[0])
+                if list(stateG.edges).count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0:
+                    #edges.append([row[0],row[1]])
+                    stateG.add_edge(row[0],row[1])
+                distnum[row[0]]=row[2] 
+                
+    nx.set_node_attributes(stateG,distnum,"District Number")
+    nodes_for_G = []
+    for i in distnum:
+        if distnum[i]==dist1 or distnum[i]==dist2:
+            nodes_for_G.append(i)
+    G = stateG.subgraph(nodes_for_G)
+
+# Following line requires two-sided neighbor relationship. Maybe fix later.
+#    with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
+#    for row in cursor:
+#        if nodes.count(row[0])==0:
+#            nodes.append(row[0]) # If the node is not in the nodes list, add it
+#            G.add_node(row[0])
+#        if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
+#            edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
+#            G.add_edge(row[0],row[1])
+
     pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
     #NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
     with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
@@ -273,7 +302,7 @@ def main(*args):
     [dist1_pop, dist2_pop] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop)
+        return(dist1_pop, dist2_pop,T)
     #    IterationCount += 1
     #    if IterationCount==1:
     #        StopCriterion = True

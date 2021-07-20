@@ -16,8 +16,9 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-seed = 1738
-random.seed(seed)
+#seed = 1738
+#random.seed(seed)
+import CreateSpanningTree
 
 runspot = "ArcGIS"
 
@@ -128,7 +129,7 @@ if in_table == "" and distcount == "":
 #User-defined variables
 distcount = round(float(distcount))
 T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
-MaxIter =1000 #Maximum number of iterations to run
+MaxIter =500 #Maximum number of iterations to run
 
 
 #Returns DistField "Dist_Assgn" and creates the field if it's not already there
@@ -175,6 +176,8 @@ deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
 [NameField,x] = FindNamingFields(in_table)
 NameField = NameField[0]
 arcprint("The NameField is '{0}'",NameField)
+tol=30
+hypsumpop=sumpop
 
 #Starting the main line of the Simulated Annealing Algorithm
 count = 0
@@ -182,14 +185,46 @@ while T>0.1 and count <MaxIter:
     arcprint("\ncount = {0}. About to add 1.",count)
     count = count+1
     """CURRENTLY, THIS CODE RANDOMLY SELECTS A SINGLE PRECINCT (OR COUNTY) AND RANDOMLY CHANGES ITS DISTRICT. WE NEED TO REPLACE THIS WITH RECOM"""
+    dist1 = random.randint(1,distcount)
+    dist2 = random.randint(1,distcount)
+    while dist1==dist2: #Randomly selects two different districts
+        dist1 = random.randint(1,distcount)
+        dist2 = random.randint(1,distcount)
+    arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
+    try:
+        [dist1_pop, dist2_pop,tree] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", dist1, dist2, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1",tol)
+    except RuntimeError:
+        arcprint("We had a runtime error. Selecting new districts")
+        count=count-1
+        continue
+    if dist1_pop==float('inf') or dist2_pop==float('inf'):
+        count=count-1
+        continue
+    hypsumpop[dist1-1] = dist1_pop
+    hypsumpop[dist2-1] = dist2_pop
+    deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount)
+    #arcprint("absolute deviation is {0}",deviation[count])    
+    DeltaE = deviation[count] - deviation[count-1]
+    arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
+    if DeltaE <0:
+        sumpop=hypsumpop
+        T = T*.999
+        continue
+    else :
+        rand = random.uniform(0,1)
+        try: 
+            p = 1/math.exp(DeltaE/T)
+        except OverflowError:
+            p = 0
+        arcprint("p = {0}. rand = {1}",p,rand)
+        if rand<=p:
+            sumpop=hypsumpop
+            T = T*.999
+            continue
+        else: #undoes the district changes previously made. 
+            count = count-1
     
-    
-    
-    
-    
-    
-    
-    randshape = 45000
+    '''randshape = 45000
     adder = random.randint(0,45)
     randshape = randshape + adder*2+1
     #This cursor line updates one preinct at a time. 
@@ -232,7 +267,7 @@ while T>0.1 and count <MaxIter:
             with arcpy.da.UpdateCursor(in_table, [NameField, DistField, PopField],"{0} = '{1}'".format(NameField,randshape)) as cursor:
                 for row in cursor:
                     row[1] = currdist
-                    cursor.updateRow(row)
+                    cursor.updateRow(row)'''
 if T<=0.1:
     arcprint("\nSmallest legal temperature reached T = {0}.", T)
 if count >=MaxIter:
