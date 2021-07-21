@@ -302,7 +302,7 @@ def main(*args):
     [dist1_pop, dist2_pop] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,T)
+        return(dist1_pop, dist2_pop,stateG)
     #    IterationCount += 1
     #    if IterationCount==1:
     #        StopCriterion = True

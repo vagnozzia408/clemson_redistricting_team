@@ -192,7 +192,7 @@ while T>0.1 and count <MaxIter:
         dist2 = random.randint(1,distcount)
     arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
     try:
-        [dist1_pop, dist2_pop,tree] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", dist1, dist2, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1",tol)
+        [dist1_pop, dist2_pop,stateG] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", dist1, dist2, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1",tol)
     except RuntimeError:
         arcprint("We had a runtime error. Selecting new districts")
         count=count-1
