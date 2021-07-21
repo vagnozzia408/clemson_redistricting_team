@@ -1,20 +1,17 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Mt. Carmel,247,115,115,24,24,0,0,139
-Monticello,520,63,63,176,176,0,0,239
-Savannah,1826,169,169,620,620,0,0,789
-Willington,218,44,44,42,42,0,0,86
-McCormick No. 1,1165,264,264,149,149,0,0,413
-Bethany,349,143,143,46,46,0,0,189
-McCormick No. 2,953,229,229,98,98,0,0,327
-Plum Branch,767,203,203,153,153,0,0,356
-Parksville,216,16,16,91,91,0,0,107
-Modoc,264,16,16,152,152,0,0,168
-Clark's Hill,538,130,130,129,129,0,0,259
-Absentee,0,709,709,646,646,1,1,1356
-Emergency,0,0,0,0,0,0,0,0
-Failsafe,0,2,2,1,1,0,0,3
-Provisional,0,0,0,0,0,0,0,0
-Failsafe Provisional,0,0,0,0,0,0,0,0
-Total:,7063,2103,2103,2327,2327,1,1,4431
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+McCormick,Mt. Carmel,247,115,24,0,139
+McCormick,Monticello,520,63,176,0,239
+McCormick,Savannah,1826,169,620,0,789
+McCormick,Willington,218,44,42,0,86
+McCormick,McCormick No. 1,1165,264,149,0,413
+McCormick,Bethany,349,143,46,0,189
+McCormick,McCormick No. 2,953,229,98,0,327
+McCormick,Plum Branch,767,203,153,0,356
+McCormick,Parksville,216,16,91,0,107
+McCormick,Modoc,264,16,152,0,168
+McCormick,Clark's Hill,538,130,129,0,259
+McCormick,Absentee,0,709,646,1,1356
+McCormick,Emergency,0,0,0,0,0
+McCormick,Failsafe,0,2,1,0,3
+McCormick,Provisional,0,0,0,0,0
+McCormick,Failsafe Provisional,0,0,0,0,0

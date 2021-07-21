@@ -1,38 +1,35 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Allens,988,41,41,366,366,0,0,407
-Alma Mill,1629,301,301,282,282,1,1,584
-Antioch and Kings Creek,1232,66,66,499,499,0,0,565
-Ashworth,1117,67,67,494,494,0,0,561
-Blacksburg Ward No. 1,911,114,114,270,270,0,0,384
-Blacksburg Ward No. 2,1315,100,100,497,497,2,2,599
-Draytonville,1487,151,151,513,513,0,0,664
-Ezells and Butler,1325,100,100,530,530,2,2,632
-Gaffney Ward No. 1,727,147,147,64,64,0,0,211
-Gaffney Ward No. 2,1135,346,346,91,91,1,1,438
-Gaffney Ward No. 3,1037,355,355,69,69,1,1,425
-Gaffney Ward No. 4,1332,296,296,271,271,0,0,567
-Gaffney Ward No. 5,1056,194,194,272,272,0,0,466
-Gaffney Ward No. 6,1085,150,150,367,367,0,0,517
-Grassy Pond,2044,182,182,820,820,1,1,1003
-Goucher and Thicketty,1121,85,85,444,444,0,0,529
-Holly Grove-Buffalo,1246,79,79,460,460,1,1,540
-Limestone Mill,827,137,137,128,128,1,1,266
-Littlejohn's and Sarratt's,347,24,24,168,168,0,0,192
-Macedonia,1350,131,131,534,534,2,2,667
-Morgan,1099,78,78,484,484,0,0,562
-Musgrove Mill,1348,169,169,426,426,0,0,595
-Ninety Nine and Cherokee Falls,853,44,44,362,362,1,1,407
-Pleasant Grove,902,224,224,218,218,0,0,442
-Pleasant Meadows,726,224,224,93,93,1,1,318
-Timber Ridge,881,62,62,395,395,0,0,457
-White Plains,1258,80,80,482,482,1,1,563
-Wilkinsville and Metcalf,521,18,18,259,259,0,0,277
-Woods,942,76,76,409,409,0,0,485
-Absentee,0,870,870,1425,1425,2,2,2297
-Emergency,0,0,0,0,0,0,0,0
-Failsafe,0,53,53,38,38,0,0,91
-Provisional,0,0,0,0,0,0,0,0
-Failsafe Provisional,0,0,0,0,0,0,0,0
-Total:,31841,4964,4964,11730,11730,17,17,16711
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Cherokee,Allens,988,41,366,0,407
+Cherokee,Alma Mill,1629,301,282,1,584
+Cherokee,Antioch and Kings Creek,1232,66,499,0,565
+Cherokee,Ashworth,1117,67,494,0,561
+Cherokee,Blacksburg Ward No. 1,911,114,270,0,384
+Cherokee,Blacksburg Ward No. 2,1315,100,497,2,599
+Cherokee,Draytonville,1487,151,513,0,664
+Cherokee,Ezells and Butler,1325,100,530,2,632
+Cherokee,Gaffney Ward No. 1,727,147,64,0,211
+Cherokee,Gaffney Ward No. 2,1135,346,91,1,438
+Cherokee,Gaffney Ward No. 3,1037,355,69,1,425
+Cherokee,Gaffney Ward No. 4,1332,296,271,0,567
+Cherokee,Gaffney Ward No. 5,1056,194,272,0,466
+Cherokee,Gaffney Ward No. 6,1085,150,367,0,517
+Cherokee,Grassy Pond,2044,182,820,1,1003
+Cherokee,Goucher and Thicketty,1121,85,444,0,529
+Cherokee,Holly Grove-Buffalo,1246,79,460,1,540
+Cherokee,Limestone Mill,827,137,128,1,266
+Cherokee,Littlejohn's and Sarratt's,347,24,168,0,192
+Cherokee,Macedonia,1350,131,534,2,667
+Cherokee,Morgan,1099,78,484,0,562
+Cherokee,Musgrove Mill,1348,169,426,0,595
+Cherokee,Ninety Nine and Cherokee Falls,853,44,362,1,407
+Cherokee,Pleasant Grove,902,224,218,0,442
+Cherokee,Pleasant Meadows,726,224,93,1,318
+Cherokee,Timber Ridge,881,62,395,0,457
+Cherokee,White Plains,1258,80,482,1,563
+Cherokee,Wilkinsville and Metcalf,521,18,259,0,277
+Cherokee,Woods,942,76,409,0,485
+Cherokee,Absentee,0,870,1425,2,2297
+Cherokee,Emergency,0,0,0,0,0
+Cherokee,Failsafe,0,53,38,0,91
+Cherokee,Provisional,0,0,0,0,0
+Cherokee,Failsafe Provisional,0,0,0,0,0

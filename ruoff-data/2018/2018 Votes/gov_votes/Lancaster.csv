@@ -1,45 +1,42 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Antioch,794,107,107,293,293,0,0,400
-Lake House,2530,506,506,806,806,0,0,1312
-Camp Creek,792,84,84,307,307,0,0,391
-Carmel,486,109,109,135,135,0,0,244
-Chesterfield Ave,1279,356,356,63,63,0,0,419
-Douglas,1773,342,342,444,444,1,1,787
-Dwight,1757,177,177,634,634,0,0,811
-Elgin,1486,283,283,414,414,0,0,697
-Erwin Farm,1580,323,323,270,270,0,0,593
-Gooch's Cross Roads,1767,337,337,252,252,1,1,590
-Heath Springs,1153,204,204,358,358,0,0,562
-Hyde Park,1515,251,251,378,378,1,1,630
-Jacksonham,987,163,163,280,280,0,0,443
-Kershaw North,1536,267,267,404,404,1,1,672
-Kershaw South,1303,161,161,529,529,0,0,690
-Lancaster East,1892,340,340,194,194,0,0,534
-Lancaster West,1017,193,193,136,136,0,0,329
-Lynwood Drive,2150,390,390,514,514,1,1,905
-Midway,660,55,55,261,261,0,0,316
-Pleasant Hill,1226,202,202,353,353,2,2,557
-Pleasant Valley,2957,652,652,768,768,2,2,1422
-Rich Hill,1052,99,99,372,372,0,0,471
-Riverside,807,201,201,159,159,1,1,361
-Spring Hill,1099,114,114,404,404,1,1,519
-Unity,1240,166,166,424,424,0,0,590
-Van Wyck,803,161,161,297,297,0,0,458
-Possum Hollow,2693,491,491,736,736,1,1,1228
-University,1160,219,219,322,322,1,1,542
-Shelley Mullis,1941,401,401,502,502,1,1,904
-Black Horse Run,3027,624,624,888,888,1,1,1513
-Gold Hill,840,182,182,368,368,0,0,550
-Harrisburg,3090,607,607,886,886,1,1,1494
-Osceola,3340,715,715,958,958,0,0,1673
-River Road,2324,391,391,744,744,0,0,1135
-The Lodge,3108,630,630,1100,1100,0,0,1730
-College Park,1245,193,193,382,382,0,0,575
-Absentee,0,2489,2489,3135,3135,4,4,5628
-Emergency,0,5,5,4,4,0,0,9
-Failsafe,0,24,24,16,16,0,0,40
-Provisional,0,42,42,19,19,1,1,62
-Failsafe Provisional,0,41,41,45,45,0,0,86
-Total:,58409,13297,13297,19554,19554,21,21,32872
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Lancaster,Antioch,794,107,293,0,400
+Lancaster,Lake House,2530,506,806,0,1312
+Lancaster,Camp Creek,792,84,307,0,391
+Lancaster,Carmel,486,109,135,0,244
+Lancaster,Chesterfield Ave,1279,356,63,0,419
+Lancaster,Douglas,1773,342,444,1,787
+Lancaster,Dwight,1757,177,634,0,811
+Lancaster,Elgin,1486,283,414,0,697
+Lancaster,Erwin Farm,1580,323,270,0,593
+Lancaster,Gooch's Cross Roads,1767,337,252,1,590
+Lancaster,Heath Springs,1153,204,358,0,562
+Lancaster,Hyde Park,1515,251,378,1,630
+Lancaster,Jacksonham,987,163,280,0,443
+Lancaster,Kershaw North,1536,267,404,1,672
+Lancaster,Kershaw South,1303,161,529,0,690
+Lancaster,Lancaster East,1892,340,194,0,534
+Lancaster,Lancaster West,1017,193,136,0,329
+Lancaster,Lynwood Drive,2150,390,514,1,905
+Lancaster,Midway,660,55,261,0,316
+Lancaster,Pleasant Hill,1226,202,353,2,557
+Lancaster,Pleasant Valley,2957,652,768,2,1422
+Lancaster,Rich Hill,1052,99,372,0,471
+Lancaster,Riverside,807,201,159,1,361
+Lancaster,Spring Hill,1099,114,404,1,519
+Lancaster,Unity,1240,166,424,0,590
+Lancaster,Van Wyck,803,161,297,0,458
+Lancaster,Possum Hollow,2693,491,736,1,1228
+Lancaster,University,1160,219,322,1,542
+Lancaster,Shelley Mullis,1941,401,502,1,904
+Lancaster,Black Horse Run,3027,624,888,1,1513
+Lancaster,Gold Hill,840,182,368,0,550
+Lancaster,Harrisburg,3090,607,886,1,1494
+Lancaster,Osceola,3340,715,958,0,1673
+Lancaster,River Road,2324,391,744,0,1135
+Lancaster,The Lodge,3108,630,1100,0,1730
+Lancaster,College Park,1245,193,382,0,575
+Lancaster,Absentee,0,2489,3135,4,5628
+Lancaster,Emergency,0,5,4,0,9
+Lancaster,Failsafe,0,24,16,0,40
+Lancaster,Provisional,0,42,19,1,62
+Lancaster,Failsafe Provisional,0,41,45,0,86

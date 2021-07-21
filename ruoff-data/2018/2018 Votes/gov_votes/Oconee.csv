@@ -1,40 +1,37 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Newry-Corinth,253,37,37,71,71,0,0,108
-Earles Grove,804,77,77,369,369,1,1,447
-Ravenel,2421,495,495,683,683,1,1,1179
-Fair Play,929,82,82,432,432,2,2,516
-Friendship,1980,238,238,645,645,0,0,883
-Holly Springs,348,16,16,179,179,0,0,195
-Keowee,1889,177,177,686,686,2,2,865
-Long Creek,384,66,66,142,142,0,0,208
-Mountain Rest,880,114,114,391,391,1,1,506
-Madison,602,42,42,264,264,1,1,307
-Bountyland,1751,210,210,595,595,0,0,805
-Oakway,1279,126,126,498,498,0,0,624
-Return,673,69,69,346,346,0,0,415
-Richland,987,119,119,415,415,1,1,535
-Salem,1874,179,179,761,761,3,3,943
-Stamp Creek,2907,343,343,800,800,0,0,1143
-New Hope,2339,231,231,807,807,1,1,1039
-Shiloh,1215,235,235,326,326,1,1,562
-South Union,1549,185,185,553,553,1,1,739
-Tamassee,1267,129,129,524,524,0,0,653
-Tokeena-Providence,1231,124,124,449,449,1,1,574
-Utica,677,120,120,138,138,0,0,258
-Walhalla 1,3446,311,311,1015,1015,1,1,1327
-Walhalla 2,2517,214,214,683,683,4,4,901
-Westminster 1,2838,230,230,969,969,1,1,1200
-Westminster 2,1792,113,113,525,525,2,2,640
-West Union,1827,178,178,620,620,0,0,798
-Seneca 1,2827,555,555,636,636,3,3,1194
-Seneca 2,2077,286,286,504,504,1,1,791
-Seneca 3,1371,180,180,417,417,2,2,599
-Seneca 4,2753,474,474,578,578,0,0,1052
-Absentee,0,1984,1984,3556,3556,8,8,5548
-Emergency,0,0,0,0,0,0,0,0
-Failsafe,0,0,0,0,0,0,0,0
-Provisional,0,3,3,13,13,0,0,16
-Failsafe Provisional,0,3,3,9,9,0,0,12
-Total:,49687,7945,7945,19599,19599,38,38,27582
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Oconee,Newry-Corinth,253,37,71,0,108
+Oconee,Earles Grove,804,77,369,1,447
+Oconee,Ravenel,2421,495,683,1,1179
+Oconee,Fair Play,929,82,432,2,516
+Oconee,Friendship,1980,238,645,0,883
+Oconee,Holly Springs,348,16,179,0,195
+Oconee,Keowee,1889,177,686,2,865
+Oconee,Long Creek,384,66,142,0,208
+Oconee,Mountain Rest,880,114,391,1,506
+Oconee,Madison,602,42,264,1,307
+Oconee,Bountyland,1751,210,595,0,805
+Oconee,Oakway,1279,126,498,0,624
+Oconee,Return,673,69,346,0,415
+Oconee,Richland,987,119,415,1,535
+Oconee,Salem,1874,179,761,3,943
+Oconee,Stamp Creek,2907,343,800,0,1143
+Oconee,New Hope,2339,231,807,1,1039
+Oconee,Shiloh,1215,235,326,1,562
+Oconee,South Union,1549,185,553,1,739
+Oconee,Tamassee,1267,129,524,0,653
+Oconee,Tokeena-Providence,1231,124,449,1,574
+Oconee,Utica,677,120,138,0,258
+Oconee,Walhalla 1,3446,311,1015,1,1327
+Oconee,Walhalla 2,2517,214,683,4,901
+Oconee,Westminster 1,2838,230,969,1,1200
+Oconee,Westminster 2,1792,113,525,2,640
+Oconee,West Union,1827,178,620,0,798
+Oconee,Seneca 1,2827,555,636,3,1194
+Oconee,Seneca 2,2077,286,504,1,791
+Oconee,Seneca 3,1371,180,417,2,599
+Oconee,Seneca 4,2753,474,578,0,1052
+Oconee,Absentee,0,1984,3556,8,5548
+Oconee,Emergency,0,0,0,0,0
+Oconee,Failsafe,0,0,0,0,0
+Oconee,Provisional,0,3,13,0,16
+Oconee,Failsafe Provisional,0,3,9,0,12

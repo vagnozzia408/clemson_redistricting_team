@@ -1,22 +1,19 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-COLSTON,175,39,39,55,55,0,0,94
-EDISTO,306,52,52,104,104,1,1,157
-EHRHARDT,675,159,159,185,185,0,0,344
-EAST DENMARK,1961,593,593,144,144,0,0,737
-GOVAN,148,49,49,19,19,0,0,68
-HIGHTOWERS MILL,89,19,19,19,19,0,0,38
-HUNTER'S CHAPEL,200,53,53,52,52,0,0,105
-KEARSE,100,5,5,56,56,0,0,61
-LITTLE SWAMP,138,11,11,58,58,0,0,69
-OLAR,312,73,73,87,87,0,0,160
-SOUTH BAMBERG,2265,368,368,125,125,0,0,493
-WEST DENMARK,1129,428,428,76,76,0,0,504
-NORTH BAMBERG,1833,123,123,62,62,0,0,185
-Absentee,0,354,354,138,138,0,0,492
-Emergency,0,490,490,372,372,1,1,863
-Failsafe,0,7,7,0,0,0,0,7
-Provisional,0,5,5,0,0,0,0,5
-Failsafe Provisional,0,0,0,0,0,0,0,0
-Total:,9331,2828,2828,1552,1552,2,2,4382
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Bamberg,COLSTON,175,39,55,0,94
+Bamberg,EDISTO,306,52,104,1,157
+Bamberg,EHRHARDT,675,159,185,0,344
+Bamberg,EAST DENMARK,1961,593,144,0,737
+Bamberg,GOVAN,148,49,19,0,68
+Bamberg,HIGHTOWERS MILL,89,19,19,0,38
+Bamberg,HUNTER'S CHAPEL,200,53,52,0,105
+Bamberg,KEARSE,100,5,56,0,61
+Bamberg,LITTLE SWAMP,138,11,58,0,69
+Bamberg,OLAR,312,73,87,0,160
+Bamberg,SOUTH BAMBERG,2265,368,125,0,493
+Bamberg,WEST DENMARK,1129,428,76,0,504
+Bamberg,NORTH BAMBERG,1833,123,62,0,185
+Bamberg,Absentee,0,354,138,0,492
+Bamberg,Emergency,0,490,372,1,863
+Bamberg,Failsafe,0,7,0,0,7
+Bamberg,Provisional,0,5,0,0,5
+Bamberg,Failsafe Provisional,0,0,0,0,0

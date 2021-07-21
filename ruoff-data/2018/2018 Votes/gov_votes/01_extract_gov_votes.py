@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-## Working on script to extract governor vote totals from the 2018 general election.
+## Script to extract governor vote totals from the 2018 general election.
 ## Could be modified to extract votes from any election
 
 ## To Do Items:
@@ -18,6 +18,7 @@ assert(len(county_vote_files)==46)
 
 for f in county_vote_files:
     filename = 'C:/Users/avagnoz/Desktop/Clemson_Redistricting_Team/ruoff-data/2018/2018 Votes/'+f
+    #could modify sheet_name for a different election
     read_file = pd.read_excel(filename,sheet_name = '3')
     county = f[:-5]
     new_csv = 'C:/Users/avagnoz/Desktop/Clemson_Redistricting_Team/ruoff-data/2018/2018 Votes/gov_votes/'+county+'.csv'

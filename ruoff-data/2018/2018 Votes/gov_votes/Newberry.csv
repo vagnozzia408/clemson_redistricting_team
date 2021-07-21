@@ -1,39 +1,36 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Newberry Ward 1,406,89,89,79,79,0,0,168
-Newberry Ward 2,1043,195,195,281,281,1,1,477
-Newberry Ward 3,834,186,186,144,144,1,1,331
-Newberry Ward 4,527,184,184,30,30,0,0,214
-Newberry Ward 5,629,181,181,33,33,0,0,214
-Newberry Ward 6,1124,215,215,235,235,1,1,451
-Beth - Eden,562,95,95,173,173,0,0,268
-Bush River,293,40,40,104,104,0,0,144
-Chappells,646,118,118,217,217,0,0,335
-Fairview,1615,212,212,685,685,3,3,900
-Hartford,1033,163,163,276,276,0,0,439
-Helena,790,307,307,58,58,1,1,366
-Kinards-Jalapa,426,63,63,163,163,0,0,226
-Johnstone,525,80,80,154,154,0,0,234
-Little Mountain,1285,202,202,513,513,0,0,715
-Maybinton,72,31,31,11,11,0,0,42
-Mt. Bethel-Garmany,1126,283,283,234,234,0,0,517
-Consolidated Number 5,1003,177,177,338,338,1,1,516
-O'Neal,1354,161,161,546,546,2,2,709
-Oakland,694,208,208,54,54,0,0,262
-Peak,121,28,28,49,49,0,0,77
-Pomaria,576,90,90,207,207,1,1,298
-Prosperity City,830,170,170,210,210,0,0,380
-Silverstreet,701,134,134,216,216,0,0,350
-Stoney Hill,690,81,81,347,347,1,1,429
-St. Phillips-Jolly Street,968,189,189,307,307,0,0,496
-Wheeland,443,48,48,234,234,0,0,282
-Whitmire City,763,120,120,256,256,0,0,376
-Whitmire Outside,677,120,120,247,247,0,0,367
-Prosperity Outside,865,154,154,216,216,0,0,370
-Absentee,0,1036,1036,1024,1024,0,0,2060
-Emergency,0,0,0,0,0,0,0,0
-Failsafe,0,12,12,2,2,0,0,14
-Provisional,0,2,2,1,1,0,0,3
-Failsafe Provisional,0,0,0,0,0,0,0,0
-Total:,22621,5374,5374,7644,7644,12,12,13030
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Newberry,Newberry Ward 1,406,89,79,0,168
+Newberry,Newberry Ward 2,1043,195,281,1,477
+Newberry,Newberry Ward 3,834,186,144,1,331
+Newberry,Newberry Ward 4,527,184,30,0,214
+Newberry,Newberry Ward 5,629,181,33,0,214
+Newberry,Newberry Ward 6,1124,215,235,1,451
+Newberry,Beth - Eden,562,95,173,0,268
+Newberry,Bush River,293,40,104,0,144
+Newberry,Chappells,646,118,217,0,335
+Newberry,Fairview,1615,212,685,3,900
+Newberry,Hartford,1033,163,276,0,439
+Newberry,Helena,790,307,58,1,366
+Newberry,Kinards-Jalapa,426,63,163,0,226
+Newberry,Johnstone,525,80,154,0,234
+Newberry,Little Mountain,1285,202,513,0,715
+Newberry,Maybinton,72,31,11,0,42
+Newberry,Mt. Bethel-Garmany,1126,283,234,0,517
+Newberry,Consolidated Number 5,1003,177,338,1,516
+Newberry,O'Neal,1354,161,546,2,709
+Newberry,Oakland,694,208,54,0,262
+Newberry,Peak,121,28,49,0,77
+Newberry,Pomaria,576,90,207,1,298
+Newberry,Prosperity City,830,170,210,0,380
+Newberry,Silverstreet,701,134,216,0,350
+Newberry,Stoney Hill,690,81,347,1,429
+Newberry,St. Phillips-Jolly Street,968,189,307,0,496
+Newberry,Wheeland,443,48,234,0,282
+Newberry,Whitmire City,763,120,256,0,376
+Newberry,Whitmire Outside,677,120,247,0,367
+Newberry,Prosperity Outside,865,154,216,0,370
+Newberry,Absentee,0,1036,1024,0,2060
+Newberry,Emergency,0,0,0,0,0
+Newberry,Failsafe,0,12,2,0,14
+Newberry,Provisional,0,2,1,0,3
+Newberry,Failsafe Provisional,0,0,0,0,0

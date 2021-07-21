@@ -1,30 +1,27 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Baldwin Mill,1089,221,221,142,142,1,1,364
-Baton Rouge,660,70,70,235,235,0,0,305
-Beckhamville,862,221,221,264,264,0,0,485
-Blackstock,630,113,113,179,179,0,0,292
-Edgemoor,982,172,172,401,401,0,0,573
-Eureka Mill,1447,339,339,194,194,0,0,533
-Fort Lawn,1335,249,249,405,405,0,0,654
-Halsellville,189,54,54,53,53,0,0,107
-Hazelwood,716,102,102,233,233,0,0,335
-Lowrys,928,120,120,340,340,0,0,460
-Richburg,1231,251,251,386,386,0,0,637
-Rodman,1225,205,205,411,411,0,0,616
-Rossville,384,56,56,152,152,0,0,208
-Wilksburg,498,147,147,127,127,0,0,274
-Chester Ward 1,1482,384,384,158,158,1,1,543
-Chester Ward 2,924,262,262,75,75,0,0,337
-Chester Ward 3,1392,253,253,206,206,0,0,459
-Chester Ward 4,1024,238,238,108,108,0,0,346
-Chester Ward 5,932,121,121,242,242,0,0,363
-Lando/Lansford,961,152,152,344,344,0,0,496
-Great Falls,1096,214,214,205,205,0,0,419
-Absentee,0,1251,1251,805,805,1,1,2057
-Emergency,0,0,0,0,0,0,0,0
-Failsafe,0,0,0,0,0,0,0,0
-Provisional,0,0,0,0,0,0,0,0
-Failsafe Provisional,0,0,0,0,0,0,0,0
-Total:,19987,5195,5195,5665,5665,3,3,10863
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Chester,Baldwin Mill,1089,221,142,1,364
+Chester,Baton Rouge,660,70,235,0,305
+Chester,Beckhamville,862,221,264,0,485
+Chester,Blackstock,630,113,179,0,292
+Chester,Edgemoor,982,172,401,0,573
+Chester,Eureka Mill,1447,339,194,0,533
+Chester,Fort Lawn,1335,249,405,0,654
+Chester,Halsellville,189,54,53,0,107
+Chester,Hazelwood,716,102,233,0,335
+Chester,Lowrys,928,120,340,0,460
+Chester,Richburg,1231,251,386,0,637
+Chester,Rodman,1225,205,411,0,616
+Chester,Rossville,384,56,152,0,208
+Chester,Wilksburg,498,147,127,0,274
+Chester,Chester Ward 1,1482,384,158,1,543
+Chester,Chester Ward 2,924,262,75,0,337
+Chester,Chester Ward 3,1392,253,206,0,459
+Chester,Chester Ward 4,1024,238,108,0,346
+Chester,Chester Ward 5,932,121,242,0,363
+Chester,Lando/Lansford,961,152,344,0,496
+Chester,Great Falls,1096,214,205,0,419
+Chester,Absentee,0,1251,805,1,2057
+Chester,Emergency,0,0,0,0,0
+Chester,Failsafe,0,0,0,0,0
+Chester,Provisional,0,0,0,0,0
+Chester,Failsafe Provisional,0,0,0,0,0

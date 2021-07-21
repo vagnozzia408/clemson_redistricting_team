@@ -1,70 +1,67 @@
-Governor and Lieutenant Governor (Vote For 1),Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8
-,,James Smith / Mandy Powers Norrell,,Henry McMaster / Pamela Evette,,Write-In,,
-County,Registered Voters,Election Day,Total Votes,Election Day,Total Votes,Election Day,Total Votes,Total
-Stone Church,1150,363,363,271,271,1,1,635
-University,704,175,175,154,154,0,0,329
-Morrison,1329,319,319,264,264,0,0,583
-Abel,938,247,247,118,118,0,0,365
-Calhoun,1161,259,259,166,166,1,1,426
-Clemson,1766,491,491,489,489,1,1,981
-Issaqueena,783,239,239,176,176,2,2,417
-West Central,983,155,155,140,140,3,3,298
-North Central,1014,163,163,359,359,2,2,524
-Pike,963,220,220,286,286,2,2,508
-Lawrence Chapel,1190,203,203,457,457,2,2,662
-Norris,1102,106,106,465,465,2,2,573
-Six Mile,1346,109,109,622,622,1,1,732
-Six Mile Mountain,1411,160,160,574,574,2,2,736
-Praters Creek,847,46,46,391,391,0,0,437
-Mountain View,1505,136,136,529,529,1,1,666
-Albert R. Lewis,1207,93,93,543,543,1,1,637
-Holly Springs,1459,166,166,601,601,0,0,767
-Pumpkintown,1402,184,184,614,614,1,1,799
-Griffin,1382,135,135,636,636,0,0,771
-North Pickens,1258,98,98,508,508,0,0,606
-West Pickens,1279,127,127,481,481,4,4,612
-South Pickens,1097,144,144,333,333,2,2,479
-East Pickens,1174,75,75,532,532,0,0,607
-Glassy Mountain,1173,64,64,488,488,1,1,553
-Cedar Rock,1196,106,106,504,504,0,0,610
-Skelton,1084,72,72,493,493,1,1,566
-Rices Creek,1181,107,107,475,475,1,1,583
-West Liberty,1192,107,107,515,515,0,0,622
-East Liberty,1081,99,99,421,421,1,1,521
-Flat Rock,1202,110,110,514,514,2,2,626
-Zion,1133,102,102,423,423,0,0,525
-Smith Grove,889,87,87,279,279,0,0,366
-Arial Mill,996,89,89,358,358,3,3,450
-Simpson,1100,214,214,161,161,1,1,376
-Woodside,1443,231,231,433,433,5,5,669
-Brushy Creek,1572,221,221,583,583,3,3,807
-Pickensville,1028,133,133,367,367,1,1,501
-Easley,1178,148,148,365,365,0,0,513
-Forest Acres,991,165,165,373,373,0,0,538
-Crestview,1165,134,134,517,517,2,2,653
-Sitton,1344,168,168,570,570,2,2,740
-Rock Springs,1286,146,146,493,493,1,1,640
-Saluda,1112,141,141,394,394,0,0,535
-Crosswell,1386,124,124,543,543,2,2,669
-Georges Creek,1025,144,144,424,424,3,3,571
-McKissick,1223,173,173,394,394,4,4,571
-Vinland,1013,73,73,422,422,0,0,495
-Crossroads,1220,97,97,405,405,0,0,502
-Dacusville,1034,55,55,321,321,1,1,377
-Nine Forks,1174,82,82,473,473,5,5,560
-South Central,1104,216,216,228,228,0,0,444
-Crescent Hill,1244,76,76,498,498,2,2,576
-North Liberty,1083,90,90,384,384,1,1,475
-Pendleton,986,74,74,383,383,0,0,457
-Fruit Mountain,868,79,79,268,268,0,0,347
-Pope Field,939,131,131,285,285,2,2,418
-Sheffield,1340,159,159,570,570,2,2,731
-Tri County,550,102,102,219,219,0,0,321
-McAllister,1138,130,130,377,377,1,1,508
-Lenhart,1019,114,114,324,324,1,1,439
-Absentee,0,1235,1235,2506,2506,5,5,3746
-Emergency,0,130,130,570,570,1,1,701
-Failsafe,0,17,17,42,42,0,0,59
-Provisional,0,22,22,45,45,0,0,67
-Failsafe Provisional,0,13,13,23,23,0,0,36
-Total:,70142,10393,10393,28139,28139,82,82,38614
+County,Precinct,Reg_Voters,DEM_Votes,REP_Votes,OTHER_Votes,Total
+Pickens,Stone Church,1150,363,271,1,635
+Pickens,University,704,175,154,0,329
+Pickens,Morrison,1329,319,264,0,583
+Pickens,Abel,938,247,118,0,365
+Pickens,Calhoun,1161,259,166,1,426
+Pickens,Clemson,1766,491,489,1,981
+Pickens,Issaqueena,783,239,176,2,417
+Pickens,West Central,983,155,140,3,298
+Pickens,North Central,1014,163,359,2,524
+Pickens,Pike,963,220,286,2,508
+Pickens,Lawrence Chapel,1190,203,457,2,662
+Pickens,Norris,1102,106,465,2,573
+Pickens,Six Mile,1346,109,622,1,732
+Pickens,Six Mile Mountain,1411,160,574,2,736
+Pickens,Praters Creek,847,46,391,0,437
+Pickens,Mountain View,1505,136,529,1,666
+Pickens,Albert R. Lewis,1207,93,543,1,637
+Pickens,Holly Springs,1459,166,601,0,767
+Pickens,Pumpkintown,1402,184,614,1,799
+Pickens,Griffin,1382,135,636,0,771
+Pickens,North Pickens,1258,98,508,0,606
+Pickens,West Pickens,1279,127,481,4,612
+Pickens,South Pickens,1097,144,333,2,479
+Pickens,East Pickens,1174,75,532,0,607
+Pickens,Glassy Mountain,1173,64,488,1,553
+Pickens,Cedar Rock,1196,106,504,0,610
+Pickens,Skelton,1084,72,493,1,566
+Pickens,Rices Creek,1181,107,475,1,583
+Pickens,West Liberty,1192,107,515,0,622
+Pickens,East Liberty,1081,99,421,1,521
+Pickens,Flat Rock,1202,110,514,2,626
+Pickens,Zion,1133,102,423,0,525
+Pickens,Smith Grove,889,87,279,0,366
+Pickens,Arial Mill,996,89,358,3,450
+Pickens,Simpson,1100,214,161,1,376
+Pickens,Woodside,1443,231,433,5,669
+Pickens,Brushy Creek,1572,221,583,3,807
+Pickens,Pickensville,1028,133,367,1,501
+Pickens,Easley,1178,148,365,0,513
+Pickens,Forest Acres,991,165,373,0,538
+Pickens,Crestview,1165,134,517,2,653
+Pickens,Sitton,1344,168,570,2,740
+Pickens,Rock Springs,1286,146,493,1,640
+Pickens,Saluda,1112,141,394,0,535
+Pickens,Crosswell,1386,124,543,2,669
+Pickens,Georges Creek,1025,144,424,3,571
+Pickens,McKissick,1223,173,394,4,571
+Pickens,Vinland,1013,73,422,0,495
+Pickens,Crossroads,1220,97,405,0,502
+Pickens,Dacusville,1034,55,321,1,377
+Pickens,Nine Forks,1174,82,473,5,560
+Pickens,South Central,1104,216,228,0,444
+Pickens,Crescent Hill,1244,76,498,2,576
+Pickens,North Liberty,1083,90,384,1,475
+Pickens,Pendleton,986,74,383,0,457
+Pickens,Fruit Mountain,868,79,268,0,347
+Pickens,Pope Field,939,131,285,2,418
+Pickens,Sheffield,1340,159,570,2,731
+Pickens,Tri County,550,102,219,0,321
+Pickens,McAllister,1138,130,377,1,508
+Pickens,Lenhart,1019,114,324,1,439
+Pickens,Absentee,0,1235,2506,5,3746
+Pickens,Emergency,0,130,570,1,701
+Pickens,Failsafe,0,17,42,0,59
+Pickens,Provisional,0,22,45,0,67
+Pickens,Failsafe Provisional,0,13,23,0,36
