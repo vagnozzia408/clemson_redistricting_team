@@ -4,7 +4,6 @@ Created on Thu May  6 17:21:17 2021
 
 @author: blake
 """
-runspot = "ArcGIS"
 import arcpy, os, sys
 
 def FindBoundaryShapes(in_table,neighbor_list,fields):
@@ -84,116 +83,123 @@ def arcerror(message,*variables):
 
 
 ### START MAIN CODE
+def main(*args):
+    global runspot
+    if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
+        runspot = "ArcGIS"
+        arcprint("We are running this from inside ArcGIS")
+    else:
+        runspot = "console"
+        arcprint("We are running this from the python console")
         
-if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
-    runspot = "ArcGIS"
-    arcprint("We are running this from inside ArcGIS")
-else:
-    runspot = "console"
-    arcprint("We are running this from the python console")
+    currentdir = os.getcwd()
+    path = currentdir + "\\SC_Redistricting_Updated.gdb"
+    arcpy.env.workspace = path
     
-currentdir = os.getcwd()
-path = currentdir + "\\SC_Redistricting_Updated.gdb"
-arcpy.env.workspace = path
-
-in_table = arcpy.GetParameterAsText(0) #Input polygon file
-#TypeOfNbr = arcpy.GetParameterAsText(1) #User input that declares whether we want district neighbors or shape neighbors
-
-if in_table == '':
-    in_table = path + "\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-    runspot = "console"
-
-[namefields,distfields] = FindNamingFields(in_table)
-all_fields = [item for sublist in [namefields, distfields] for item in sublist]
-#arcprint("namefields = {0}",namefields)
-#arcprint("[namefields, distfields] = {0}"[namefields,distfields])
-
-if namefields == []:
-    arcprint("Warning: the 'namefields' parameter is empty in PolygonNeighbors analysis.")
-if distfields == []:
-    arcprint("Warning: the 'distfields' parameter is empty in PolygonNeighbors analysis.")
-
-#Creates a neighbor list if one currently does not exist
-neighbor_list = in_table + "_neighbor_list_shapes"
-if not arcpy.Exists(neighbor_list):
-    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, all_fields,None,None,None,"KILOMETERS")
-    m = arcpy.mp.ArcGISProject("CURRENT").activeMap #Finds active map. 
-    addTab = arcpy.mp.Table(path + "\\" + neighbor_list)
-    m.addTable(addTab) #Adds table to Table of Contents
     
-srcnamefields = namefields
-nbrnamefields = namefields
-srcdistfields = distfields
-nbrdistfields = distfields
-
-#for field in srcnamefields:
-#    field = "src_" + field
-#    arcprint("field = {0}", field)
-#    srcnamefields[0] 
-
-srcnamefields = ["src_" + s for s in srcnamefields]
-nbrnamefields = ["nbr_" + s for s in nbrnamefields]
-srcdistfields = ["src_" + s for s in srcdistfields]
-nbrdistfields = ["nbr_" + s for s in nbrdistfields]
-
-#Finds number of srcnamefields
-srclen = len(srcnamefields)
-arcprint("srclen = {0}", srclen)
-
-#Finds length of all field categories
-nbrlen = len(nbrnamefields)
-arcprint("nbrlen = {0}", nbrlen)
-srcdistlen = len(srcdistfields)
-arcprint("srcdistlen = {0}",srcdistlen)
-nbrdistlen = len(nbrdistfields)
-arcprint("nbrdistlen = {0}",nbrdistlen)
-
-fieldList = arcpy.ListFields(in_table)    
-fieldNames = [f.name for f in fieldList]
-
-#src_string = "'" + "','".join(srcnamefields) + "'"
-#arcprint("string = {0}",src_string)
-
-if "Boundary" not in fieldNames:
-    arcpy.management.AddField(in_table, "Boundary", "SHORT")
-
-#Creates fields names for use in in_table cursor actions
-fields4in_table = [namefields]
-fields4in_table = [item for sublist in fields4in_table for item in sublist] #This line feels unnecessary?
-fields4in_table.append("Boundary")
-#arcprint("fields4in_table={0}",fields4in_table)
-in_tab_len = len(fields4in_table)
-#Creates field names for use in nbrlist cursor actions
-fields4nbrlist = [srcnamefields, nbrnamefields, srcdistfields, nbrdistfields]
-fields4nbrlist = [item for sublist in fields4nbrlist for item in sublist]
-fields4nbrlist.append("NODE_COUNT")
-#arcprint("fields4nbrlist={0}",fields4nbrlist)
-
-shape_name = [0] * srclen
-expression = [None] * srclen
-comboexpression = None
-
-#arcprint("[namefields, 'Boundary']={0}",[namefields, "Boundary"])
-with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
-    for in_row in in_cursor:
-        in_row[in_tab_len -1]=0
-        boundaryflag=0
-        comboexpression = MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression)
-        #arcprint("comboexpression is {0}",comboexpression)
-        with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
-            for row in cursor:   
-                #arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
-                if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
-                    boundaryflag = 1 #shape is on a boundary
-                    #arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
-                    break
-        if boundaryflag ==1:
-            in_row[in_tab_len-1]=1
-        in_cursor.updateRow(in_row)
-
-
+    try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
+        in_table = sys.argv[1]
+    except IndexError: 
+        try: #Second, tries to take input from explicit input into main()
+            in_table = args[0]
+        except IndexError: #Finally, manually assigns input values if they aren't provided
+            in_table = path + "\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+            arcprint("We are using default input choices")
+    
+    #in_table = arcpy.GetParameterAsText(0) #Input polygon file
+    #TypeOfNbr = arcpy.GetParameterAsText(1) #User input that declares whether we want district neighbors or shape neighbors
+    
+    [namefields,distfields] = FindNamingFields(in_table)
+    all_fields = [item for sublist in [namefields, distfields] for item in sublist]
+    #arcprint("namefields = {0}",namefields)
+    #arcprint("[namefields, distfields] = {0}"[namefields,distfields])
+    
+    if namefields == []:
+        arcprint("Warning: the 'namefields' parameter is empty in PolygonNeighbors analysis.")
+    if distfields == []:
+        arcprint("Warning: the 'distfields' parameter is empty in PolygonNeighbors analysis.")
+    
+    #Creates a neighbor list if one currently does not exist
+    neighbor_list = in_table + "_neighbor_list_shapes"
+    if arcpy.Exists(neighbor_list)==False:
+        arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, all_fields,None,None,None,"KILOMETERS")
+        m = arcpy.mp.ArcGISProject("CURRENT").activeMap #Finds active map. 
+        addTab = arcpy.mp.Table(path + "\\" + neighbor_list)
+        m.addTable(addTab) #Adds table to Table of Contents
         
-
-
-
-### THE ULTIMATE GOAL OF THIS CODE IS TO LIST ALL GEOGRAPHIC UNITS THAT ARE ON DISTRICT BOUNDARIES
+    srcnamefields = namefields
+    nbrnamefields = namefields
+    srcdistfields = distfields
+    nbrdistfields = distfields
+    
+    #for field in srcnamefields:
+    #    field = "src_" + field
+    #    arcprint("field = {0}", field)
+    #    srcnamefields[0] 
+    
+    srcnamefields = ["src_" + s for s in srcnamefields]
+    nbrnamefields = ["nbr_" + s for s in nbrnamefields]
+    srcdistfields = ["src_" + s for s in srcdistfields]
+    nbrdistfields = ["nbr_" + s for s in nbrdistfields]
+    
+    #Finds number of srcnamefields
+    srclen = len(srcnamefields)
+    arcprint("srclen = {0}", srclen)
+    
+    #Finds length of all field categories
+    nbrlen = len(nbrnamefields)
+    arcprint("nbrlen = {0}", nbrlen)
+    srcdistlen = len(srcdistfields)
+    arcprint("srcdistlen = {0}",srcdistlen)
+    nbrdistlen = len(nbrdistfields)
+    arcprint("nbrdistlen = {0}",nbrdistlen)
+    
+    fieldList = arcpy.ListFields(in_table)    
+    fieldNames = [f.name for f in fieldList]
+    
+    #src_string = "'" + "','".join(srcnamefields) + "'"
+    #arcprint("string = {0}",src_string)
+    
+    if "Boundary" not in fieldNames:
+        arcpy.management.AddField(in_table, "Boundary", "SHORT")
+    
+    #Creates fields names for use in in_table cursor actions
+    fields4in_table = [namefields]
+    fields4in_table = [item for sublist in fields4in_table for item in sublist] #This line feels unnecessary?
+    fields4in_table.append("Boundary")
+    #arcprint("fields4in_table={0}",fields4in_table)
+    in_tab_len = len(fields4in_table)
+    #Creates field names for use in nbrlist cursor actions
+    fields4nbrlist = [srcnamefields, nbrnamefields, srcdistfields, nbrdistfields]
+    fields4nbrlist = [item for sublist in fields4nbrlist for item in sublist]
+    fields4nbrlist.append("NODE_COUNT")
+    #arcprint("fields4nbrlist={0}",fields4nbrlist)
+    
+    shape_name = [0] * srclen
+    expression = [None] * srclen
+    comboexpression = None
+    
+    #arcprint("[namefields, 'Boundary']={0}",[namefields, "Boundary"])
+    with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
+        for in_row in in_cursor:
+            in_row[in_tab_len -1]=0
+            boundaryflag=0
+            comboexpression = MakeSQLExpression(in_row, fields4nbrlist,srclen,expression,comboexpression)
+            #arcprint("comboexpression is {0}",comboexpression)
+            with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, comboexpression) as cursor:
+                for row in cursor:   
+                    #arcprint("row[0] = {0} and row[srclen + nbrlen] = {1} and row[srclen + nbrlen + srcdistlen] = {2}",row[0],row[srclen+nbrlen], row[srclen + nbrlen + srcdistlen])
+                    if row[srclen + nbrlen] != row[srclen + nbrlen + srcdistlen]:
+                        boundaryflag = 1 #shape is on a boundary
+                        #arcprint("boundaryflag triggered when row[{0}] = {1} and row[{2}] = {3}",srclen+nbrlen, row[srclen+nbrlen], srclen + nbrlen + srcdistlen, row[srclen + nbrlen + srcdistlen])
+                        break
+            if boundaryflag ==1:
+                in_row[in_tab_len-1]=1
+            in_cursor.updateRow(in_row)
+    
+    
+            
+    
+    
+    
+    ### THE ULTIMATE GOAL OF THIS CODE IS TO LIST ALL GEOGRAPHIC UNITS THAT ARE ON DISTRICT BOUNDARIES

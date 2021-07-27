@@ -24,6 +24,7 @@ a spanning tree on the resulting subgraph.
 #11. Figure out how to cut edges and find subtree efficiently.
 #12. Consider how to change ideal population number as algorithm progresses
 #13. In nbrlist_fields, account for the 'nodes' column too and adjust the code so that shapes adjacent by a point are not adjacent
+#14. Allow stateG to be a proper input parameter
 
 import arcpy, os, sys
 import random
@@ -118,10 +119,10 @@ def FindEdgeCut(tree,tol,criteria):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
             arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,dist_crit1,dist_crit2)
-            return(dist_crit1,dist_crit2)
+            return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
-            return(float('inf'), float('inf'))
+            return(float('inf'), float('inf'),[]) 
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -167,12 +168,15 @@ def main(*args):
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     
+    arcpy.env.overwriteOutput = True
+    
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         neighbor_list = sys.argv[1]
         dist1=int(sys.argv[2])
         dist2=int(sys.argv[3])
         shapefile=sys.argv[4]
         tol=float(sys.argv[5])
+        ###NEED TO ADD stateG HERE SOMEHOW
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             neighbor_list = args[0]
@@ -180,16 +184,21 @@ def main(*args):
             dist2 = int(args[2])
             shapefile = args[3]
             tol=float(args[4])
+            stateG = args[5]
         except IndexError: #Finally, manually assigns input values if they aren't provided
             neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
-            dist1=3
+            dist1=2
             #dist1=randint(1,7) #Randomly selecting districts
-            dist2=1
+            dist2=7
             #dist2=randint(1,7) #Randonly selecting districts
             shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             tol=30
             arcprint("We are using default input choices")
-        
+    try: 
+        stateG = stateG
+    except UnboundLocalError:
+        #global stateG ## Maybe unnecessary?
+        stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
     
     ## The following lines start the structure of repeating iterations by currently keep the script from successfully running inside ArcGIS
     #StopCriterion = False #Currently runs 3 iterations of successfully finding adjacent districts then quits. 
@@ -206,8 +215,10 @@ def main(*args):
     NFL = len(namefields) #NFL = Name Fields Length (How many fields name the polygons)
     DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
     
+
+
     ## Where Amy's code edits start.
-    dist1_bdnds = [] #Creates empty list of boundary units for dist1
+    '''dist1_bdnds = [] #Creates empty list of boundary units for dist1
     dist2_bdnds = [] #Creates empty list of boundary units for dist2
     
     #Fills list of boundary units for dist1 and dist2
@@ -243,37 +254,63 @@ def main(*args):
         arcerror("Districts {0} and {1} are not adjacent.",pridist, secdist)
         #continue
     
-    ## Where Amy's code edits end.
+    ## Where Amy's code edits end.'''
     
-    global stateG
-    stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
+    ##This next section of code updates the district neighbor list at each iteration
+    #dist_neighbor_list = shapefile + "\\dist_neighbor_list"
+    
+    arcpy.PolygonNeighbors_analysis(shapefile, "dist_neighbor_list", "CLUSTER_ID",None,None,None,"KILOMETERS")
+    
+    AdjFlag = False
+    with arcpy.da.SearchCursor("dist_neighbor_list", ["src_CLUSTER_ID","nbr_CLUSTER_ID"], """{}={}""".format("src_CLUSTER_ID",dist1)) as cursor:
+        for row in cursor:
+            if row[0]==dist1 and row[1]==dist2:
+                AdjFlag=True
+                arcprint("Districts {0} and {1} are adjacent.",dist1,dist2)
+                break
+    if AdjFlag ==False:
+        arcerror("Districts {0} and {1} are not adjacent.",dist1,dist2)
+    
+    
     G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     nodes = [] #Creates empty node list
     edges = [] #Creates empty edge list
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
+    popnum = {} #Initializes a dictionary that will contain the population for each polygon
     
     """RIGHT NOW, THE CODE FINDS THE GRAPH ON EACH ITERATION FOR THE TWO DISTRICTS. I WOULD INSTEAD LIKE TO CREATE AN ENTIRE ADJACENCY GRAPH FOR THE WHOLE STATE AND ON EACH ITERATION, FIND A SUBGRAPH WITH ONLY THE TWO DISTRICTS"""
     
     
     if nx.is_empty(stateG)==True:
+        with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula"]) as cursor:
+            for row in cursor:
+                popnum[row[0]] = row[1]
+                stateG.add_node(row[0])
         with arcpy.da.SearchCursor(neighbor_list,nbrlist_fields) as cursor:
             for row in cursor:
                 cursor.reset
-                if list(stateG.nodes).count(row[0])==0:
-                    #nodes.append(row[0])
-                    stateG.add_node(row[0])
                 if list(stateG.edges).count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0:
                     #edges.append([row[0],row[1]])
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[2] 
-                
-    nx.set_node_attributes(stateG,distnum,"District Number")
+        nx.set_node_attributes(stateG,popnum,"Population")
+        nx.set_node_attributes(stateG,distnum,"District Number")
     nodes_for_G = []
-    for i in distnum:
-        if distnum[i]==dist1 or distnum[i]==dist2:
-            nodes_for_G.append(i)
-    G = stateG.subgraph(nodes_for_G)
+    if distnum != {}:
+        for i in distnum:
+            if distnum[i]==dist1 or distnum[i]==dist2:
+                nodes_for_G.append(i)
+    else:
+        distdict = dict(stateG.nodes("District Number"))
+        for v in distdict:
+            if distdict[v] == dist1 or distdict[v] == dist2:
+                nodes_for_G.append(v)
+    G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
+    
+    
 
+    
+    
 # Following line requires two-sided neighbor relationship. Maybe fix later.
 #    with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
 #    for row in cursor:
@@ -282,25 +319,55 @@ def main(*args):
 #            G.add_node(row[0])
 #        if edges.count([row[0],row[1]])==0 and edges.count([row[1],row[0]])==0 and (row[NFL]==dist1 or row[NFL]==dist2) and (row[NFL+1]==dist1 or row[NFL+1]==dist2):
 #            edges.append([row[0],row[1]]) #If the edge is not in the edge list AND the both vertices are either dist1 or dist2, add the edge
-#            G.add_edge(row[0],row[1])
-
-    pop_num={} #Initializes a dictionary that will contain population numbers for each polygon.
-    #NEED TO MAKE THIS NEXT LINE MORE GENERALIZED. 
-    with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula","CLUSTER_ID"],"""{}={} OR {}={}""".format("CLUSTER_ID",dist1,"CLUSTER_ID",dist2)) as cursor:
-        for row in cursor:
-            pop_num[row[0]] = row[1] #For each node, we associate its population
-    
-    pop_num=dict(pop_num)
-    nx.set_node_attributes(G,pop_num,"Population")       
+#            G.add_edge(row[0],row[1])   
     
     arcprint("Edges of G are {0}",G.edges)
     arcprint("Vertices of G are {0}",G.nodes)
     
     T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
     arcprint("T edges are {0}",T.edges)
-    nx.set_node_attributes(T,pop_num,"Population") 
-    [dist1_pop, dist2_pop] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
+    if popnum != {}:   
+        nx.set_node_attributes(T,popnum,"Population") 
+    else:
+        nx.set_node_attributes(T,dict(G.nodes("Population")),"Population")
+        
+    if distnum != {}:   
+        nx.set_node_attributes(T,distnum,"District Number") 
+    else:
+        nx.set_node_attributes(T,dict(G.nodes("District Number")),"District Number")
+        
+    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
+    #This next section of code decides which subgraph should become district 1 and which should become district 2
+    if dist1_pop!=float('inf') and dist2_pop!=float('inf'):
+        s0d1count=0
+        s0d2count=0
+        s1d1count=0
+        s1d2count=0
+        for i in subgraphs[0]: 
+            if stateG.nodes[i]["District Number"] == dist1:
+                s0d1count +=1
+            elif stateG.nodes[i]["District Number"] == dist2:
+                s0d2count +=1
+        for i in subgraphs[1]:
+            if stateG.nodes[i]["District Number"] == dist1:
+                s1d1count +=1
+            elif stateG.nodes[i]["District Number"] == dist2:
+                s1d2count +=1
+        
+        if s0d1count + s1d2count >= s0d2count + s1d1count:
+            for i in subgraphs[0]:
+                stateG.nodes[i]["District Number"] = dist1
+            for i in subgraphs[1]:
+                stateG.nodes[i]["District Number"] = dist2
+            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
+        else:
+            for i in subgraphs[0]:
+                stateG.nodes[i]["District Number"] = dist2
+            for i in subgraphs[1]:
+                stateG.nodes[i]["District Number"] = dist1
+            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
+        
     if __name__ != "__main__":
         return(dist1_pop, dist2_pop,stateG)
     #    IterationCount += 1
