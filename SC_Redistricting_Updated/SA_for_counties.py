@@ -74,10 +74,22 @@ def FindNamingFields(in_table):
             break
     return(namefields,distfields)
     
-def acceptchange(T,sumpop,hypsumpop,hypstateG):
+def acceptchange(T,sumpop,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list):
     T=T*coolingrate
     sumpop = hypsumpop
     stateG = hypstateG
+    arcprint("The change was accepted!")
+    
+    #Updates the neighbor list table after each iteration
+    with arcpy.da.UpdateCursor(neighbor_list,nlf,'''{}={} OR {}={} OR {}={} OR {}={}'''.format(nlf[3], dist1, nlf[4], dist1, nlf[3], dist2, nlf[4], dist2)) as cursor:
+        for row in cursor:
+            if row[0] in hypG.nodes:
+                row[3] = hypG.nodes[row[0]]["District Number"]
+            if row[1] in hypG.nodes:
+                row[4] = hypG.nodes[row[1]]["District Number"]
+            cursor.updateRow(row)
+        del cursor
+        del row
     return(T,sumpop,stateG)
         
 def arcprint(message,*variables):
@@ -98,7 +110,6 @@ def arcerror(message,*variables):
     '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddError(message.format(*variables))
-    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
@@ -108,7 +119,7 @@ def arcerror(message,*variables):
     else: 
         raise RuntimeError("No value for runspot has been assigned")
 
-### START MAIN CODE
+#%% START MAIN CODE
 def main(*args):
     global runspot #Allows runspot to be changed inside a function
     
@@ -117,12 +128,14 @@ def main(*args):
         arcprint("We are running this from inside ArcGIS")
     else:
         runspot = "console"
-        arcprint("We are running this from the python console")        
+        arcprint("We are running this from the python console")   
             
     # Set environment settings
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     arcpy.env.workspace = path
+    
+    arcpy.env.overwriteOutput = True
     
     global coolingrate
     
@@ -133,6 +146,7 @@ def main(*args):
         T = float(sys.argv[4])
         coolingrate = float(sys.argv[5])
         tol = float(sys.argv[6])
+        neighbor_list = sys.argv[7]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
@@ -141,6 +155,7 @@ def main(*args):
             T = float(args[3])
             coolingrate = float(args[4])
             tol = float(args[5])
+            neighbor_list = args[6]
         except IndexError: #Finally, manually assigns input values if they aren't provided
             in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             distcount=7
@@ -148,6 +163,7 @@ def main(*args):
             T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
             coolingrate = 0.9975
             tol=30
+            neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             arcprint("We are using default input choices")
     
     
@@ -235,7 +251,9 @@ def main(*args):
             dist2 = random.randint(1,distcount)
         arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
         try:
-            [dist1_pop, dist2_pop,hypstateG] = CreateSpanningTree.main(path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes", dist1, dist2, path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1",tol,stateG)
+            hypstateG = nx.Graph()
+            [dist1_pop, dist2_pop,hypstateG, hypG,nlf] = CreateSpanningTree.main(neighbor_list, dist1, dist2, in_table,tol,stateG)
+
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count=count-1
@@ -250,7 +268,7 @@ def main(*args):
         DeltaE = deviation[count] - deviation[count-1]
         arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
         if DeltaE <0: #An improvement!
-            [T,sumpop,stateG] = acceptchange(T,sumpop,hypsumpop,hypstateG)
+            [T,sumpop,stateG] = acceptchange(T,sumpop,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list)
             continue
         else : #A worsening :(
             rand = random.uniform(0,1)
@@ -260,10 +278,11 @@ def main(*args):
                 p = 0
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                [T,sumpop,stateG] = acceptchange(T,sumpop,hypsumpop,hypstateG)
+                [T,sumpop,stateG] = acceptchange(T,sumpop,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list)
                 continue
             else: #undoes the district changes previously made. 
                 count = count-1
+                arcprint("The change was rejected.")
         
         '''randshape = 45000
         adder = random.randint(0,45)

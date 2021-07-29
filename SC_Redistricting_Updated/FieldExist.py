@@ -56,6 +56,5 @@ if arcpy.Exists(sf):
     lstFields = arcpy.ListFields(sf)
     
 for field in lstFields:
-    arcpy.AddMessage("{0} is a type of {1} with a length of {2}"
-          .format(field.name, field.type, field.length))
+    arcprint("{0} is a type of {1} with a length of {2}", field.name, field.type, field.length)
 
