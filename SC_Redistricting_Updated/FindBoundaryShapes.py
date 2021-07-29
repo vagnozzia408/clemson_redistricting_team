@@ -201,5 +201,6 @@ def main(*args):
             
     
     
-    
+if __name__ == "__main__":
+    main()
     ### THE ULTIMATE GOAL OF THIS CODE IS TO LIST ALL GEOGRAPHIC UNITS THAT ARE ON DISTRICT BOUNDARIES
