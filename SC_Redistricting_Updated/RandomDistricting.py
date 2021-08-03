@@ -7,8 +7,6 @@ Created on Thu Apr 22 16:57:08 2021
 
 "The goal of this code is to create a random contiguous districting on the polygons given as input"
 
-runspot="ArcGIS"
-
 import arcpy, numpy, os, sys
 
 def arcprint(message,*variables):
@@ -40,6 +38,7 @@ def arcerror(message,*variables):
         raise RuntimeError("No value for runspot has been assigned")
 
 ### START MAIN CODE
+global runspot
 if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
     runspot = "ArcGIS"
     arcprint("We are running this from inside ArcGIS")
