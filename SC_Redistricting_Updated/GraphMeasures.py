@@ -5,32 +5,38 @@ Created on Fri Jul 23 13:04:43 2021
 @author: Blake Splitter and Amy Burton
 """
 
-
-import arcpy,os,sys
-import CreateSpanningTree
+import arcpy,os, sys
+#import CreateSpanningTree
 import numpy as np
 import math
 from arcpy.sa import *
 
-#def PolsbyPopper(dist1, dist2):
-#    '''Measures compactness by PolsbyPopper of the two districts
-#    we have rearranged'''
-#    ''' Starts by creating a table to hold all measures of all
-#    districts, not sure if TABLE is what we want as much as dictorionary.
-#    Will store in matrix until that is sorted.'''
-#    RelevantInfo = []
-#    with arcpy.da.SearchCursor(shapefile, "*", """{}={} OR {}={}""".
-#                                   format("Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor:
-#        for row in cursor:
-#            
-#    inZoneData = input_data
-#    zoneField = "Cluster_ID"
-#    outTable = "zonalgeomout02.dbf"
-#    processingCellSize = 0.2
-#
-#    outZonalGeometryAsTable = ZonalGeometryAsTable(inZoneData, zoneField, "PERIMETER", cellSize)
+class District:
+    Area = 0
+    Perimeter = 0
+    ppCompactScore = 0
+    Original = True
     
-
+    def __init__(self, ID):
+        self.ID = ID
+    
+    def UpdateStats(self, a, p, ppc):
+        self.Area = a
+        self.Perimeter = p
+        self.ppCompactScore = ppc
+        
+def PolsbyPopperUpdate(dist1, dist2, DistrictList):
+    #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
+    inZoneData = shapefile
+    zoneField = "Cluster_ID"
+    outTable = path + "\\TempDistrictZonalGeometry"
+    cellSize = 1.28781240014216E-02
+    arcpy.CheckOutExtension("Spatial")
+    outZonalGeometryAsTable = ZonalGeometryAsTable(inZoneData, zoneField, outTable, cellSize)
+    with arcpy.da.SearchCursor(outTable, "*", '''{}={} OR {}={}'''.format("Value",dist1,"Value",dist2)) as cursor:
+        for row in cursor:
+            DistrictList[row[1]-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+            DistrictList[row[1]-1].Original = False
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -48,7 +54,7 @@ def arcprint(message,*variables):
         
 def main(*args):
     ### MAIN CODE STARTS HERE
-    global districtStats
+    global DistrictList
     global runspot #Allows runspot to be changed inside a function
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
@@ -62,6 +68,8 @@ def main(*args):
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
+    arcpy.env.workspace=path
+    arcpy.env.overwriteOutput=True
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         neighbor_list = sys.argv[1]
@@ -88,24 +96,21 @@ def main(*args):
             tol=30
             arcprint("We are using default input choices")
 
-
+    # Run Compactness Scores the first time and list the list DistrictList
     inZoneData = shapefile # The major change for the in-iteration calculation is to only input a part of this table, dealing with dist1 and dist2.
     zoneField = "Cluster_ID"
     outTable = path + "\\DistrictZonalGeometry"
     cellSize = 1.28781240014216E-02
-    
     arcpy.CheckOutExtension("Spatial")
-    
+    DistrictList = []  
     outZonalGeometryAsTable = ZonalGeometryAsTable(inZoneData, zoneField, outTable, cellSize)
-    districtStats = np.zeros( (7, 4) )
     with arcpy.da.SearchCursor(outTable, "*", "*") as cursor:
         for row in cursor:
-            districtStats[int(row[0])-1][0] = row[1]
-            districtStats[int(row[0])-1][1] = row[2]
-            districtStats[int(row[0])-1][2] = row[3]
-            districtStats[int(row[0])-1][3] = 4*math.pi*float(row[2])/float(row[3])**2
-            arcprint("District {0} has PolsbyPopper Compactness score of {1}.", row[1], districtStats[int(row[1])-1][3])
-        
+            DistrictList.append(District(row[1]))
+            DistrictList[-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+    
+    
+    
         
 if __name__ == "__main__":
     main()
