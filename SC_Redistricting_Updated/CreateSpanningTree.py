@@ -21,18 +21,24 @@ a spanning tree on the resulting subgraph.
 "#8. Allow Python users to specify input easily. --- DONE (Input can be specified if running this function from a different script by calling CreateSpanningTree.main(***insert args here***), Blake)"
 "#9. Find an easier way to determine whether we're running from within Python or ArcGIS --- DONE. Now the code checks what sys.executable is, rather than examining argument input. (Blake)"
 #10. Generalize field names for 'shapefile'
+"#10. Generalize field names for 'shapefile' --- DONE. These are now user inputs"
 #11. Figure out how to cut edges and find subtree efficiently.
 #12. Consider how to change ideal population number as algorithm progresses
 #13. In nbrlist_fields, account for the 'nodes' column too and adjust the code so that shapes adjacent by a point are not adjacent
 #14. Allow stateG to be a proper input parameter
+"#13. In nbrlist_fields, account for the 'nodes' column too and adjust the code so that shapes adjacent by a point are not adjacent --- DONE. Nodes are now accounted for"
+"#14. Allow stateG to be a proper input parameter --- DONE."
+#15. Decide whether idealpop should be used in FindEdgeCut
 
 import arcpy, os, sys
 import random
 seed = 17389
+seed = 1742
 random.seed(seed)
 #from random import randint
 import networkx as nx
 from openpyxl import load_workbook
+#from openpyxl import load_workbook
 #import numpy ### WE SHOULD TRY TO USE ONLY 'RANDOM' IF WE CAN
 
 runspot = None #Global variable that will determine whether the code is started from ArcGIS or the Python console
@@ -114,14 +120,20 @@ def FindEdgeCut(tree,tol,criteria):
         #arcprint("The edges of T are now {0}. We just deleted {1}.",tree.edges,e)
         subgraphs = nx.connected_components(tree)
         subgraphs_lst = list(subgraphs)
+        subgraphs_lst[0] = sorted(subgraphs_lst[0])
+        subgraphs_lst[1] = sorted(subgraphs_lst[1])
         arcprint("The subgraph candidates are {0}.",subgraphs_lst)
         dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
         dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
+#        if criteria == "Population":
+#            total_crit = 2*idealpop
+#        else:
         total_crit= dist_crit1+dist_crit2
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
             arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,dist_crit1,dist_crit2)
+            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
@@ -182,6 +194,17 @@ def main(*args):
         shapefile=sys.argv[4]
         tol=float(sys.argv[5])
         ###NEED TO ADD stateG HERE SOMEHOW
+        shapefile=sys.argv[1]
+        sf_pop_field = sys.argv[2]
+        sf_name_field = sys.argv[3]
+        tol=float(sys.argv[4])
+        neighbor_list = sys.argv[5]
+        dist1=int(sys.argv[6])
+        dist2=int(sys.argv[7])
+        stateG = sys.argv[8]
+        #idealpop=float(sys.argv[7])
+        del stateG #We can't insert a graph from the ArcGIS input line
+        arcprint("We are using arguments from a command line")
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             neighbor_list = args[0]
@@ -190,8 +213,21 @@ def main(*args):
             shapefile = args[3]
             tol=float(args[4])
             stateG = args[5]
+            shapefile = args[0]
+            sf_pop_field = args[1]
+            sf_name_field = args[2]
+            tol = float(args[3])
+            neighbor_list = args[4]
+            dist1 = int(args[5])
+            dist2 = int(args[6])
+            stateG = args[7]
+            #idealpop = args[6]
             arcprint("Using input from another file")
         except IndexError: #Finally, manually assigns input values if they aren't provided
+            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+            sf_pop_field = "SUM_Popula"
+            sf_name_field = "OBJECTID"
+            tol=30
             neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             dist1=6
             #dist1=randint(1,7) #Randomly selecting districts
@@ -199,6 +235,7 @@ def main(*args):
             #dist2=randint(1,7) #Randonly selecting districts
             shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             tol=30
+            #idealpop = 717252
             arcprint("We are using default input choices")
     
     excel_NL = "excel_NL.xlsx"
@@ -208,8 +245,12 @@ def main(*args):
     NL_cols = ws.max_column
     NL_rows = ws.max_row
     
+
+    #arcprint("sf_pop_field is {0} and is type {1}",sf_pop_field, type(sf_pop_field))
+   
     try: 
         stateG = stateG #Doesn't do anything, but if stateG doesn't exist, it will produce an UpboundLocalError
+        stateG = stateG #Doesn't do anything, but if stateG doesn't exist, it will produce an UnboundLocalError
     except UnboundLocalError:
         #global stateG ## Maybe unnecessary?
         stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
@@ -243,6 +284,7 @@ def main(*args):
         
         
     
+
     fieldexist=False
     lstFields = arcpy.ListFields(neighbor_list)
     for field in lstFields:
@@ -250,34 +292,44 @@ def main(*args):
             fieldexist=True
             break
     if fieldexist==False:
+    if fieldexist==False: #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
         arcpy.AddField_management(neighbor_list, "src_dist", "SHORT", field_alias="Source District")
         arcpy.AddField_management(neighbor_list, "nbr_dist", "SHORT", field_alias="Neighbor District")
     lstFields = arcpy.ListFields(neighbor_list)
+    lstFields = arcpy.ListFields(neighbor_list) #Updates lstFields
     orig_dist_names=[]
     for field in lstFields:
         if field.name in ["src_CLUSTER_ID", "src_Dist_Assgn", "nbr_CLUSTER_ID", "nbr_Dist_Assgn"]:
             orig_dist_names.append(field.name)
+            orig_dist_names.append(field.name) #Creats a list that has the original field names that describe the district the polygons are in
     odn=orig_dist_names #An alias
     
     if fieldexist==False:
+    #Resets the src_dist and nbr_dist columns if they are empty or if this script is run as a stand-alone
+    if fieldexist==False or __name__ == "__main__": 
         with arcpy.da.UpdateCursor(neighbor_list, [odn[0],odn[1],'src_dist', 'nbr_dist']) as cursor:
             for row in cursor:
                 row[2]=row[0]
                 row[3]=row[1]
+                row[2]=row[0] #src_dist = src_CLUSTER_ID
+                row[3]=row[1] #nbr_dist = nbr_CLUSTER_ID
                 cursor.updateRow(row)
     
     [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list)
+    [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list) #Finds field names for neighbor_list
     nlf = nbrlist_fields #An alias
     #NFL = len(namefields) #NFL = Name Fields Length (How many fields name the polygons)
     #DFL = len(distfields) #DFL = District Fields Length (How many fields denote the district number)
     
 
+    #Determines if two districts are adjacent with a boundary larger than a single point
     AdjFlag=0
     with arcpy.da.SearchCursor(neighbor_list, nlf, '''{}={} AND {}={} AND {}={}'''.format("src_dist",dist1,"nbr_dist",dist2,"NODE_COUNT",0)) as cursor:
         for row in cursor:
             AdjFlag+=1
             if AdjFlag>=1:
                 arcprint("Blake's Code: Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
+                arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
                 break
 
 #    ## Where Amy's code edits start.
@@ -318,6 +370,9 @@ def main(*args):
         #I've added back in the error -- Blake
         arcerror("Districts {0} and {1} are not adjacent.",dist1, dist2)
         #continue
+    if AdjFlag==0: 
+        arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
+        arcerror("")
     
     ## Where Amy's code edits end.
     
@@ -346,11 +401,15 @@ def main(*args):
     """RIGHT NOW, THE CODE FINDS THE GRAPH ON EACH ITERATION FOR THE TWO DISTRICTS. I WOULD INSTEAD LIKE TO CREATE AN ENTIRE ADJACENCY GRAPH FOR THE WHOLE STATE AND ON EACH ITERATION, FIND A SUBGRAPH WITH ONLY THE TWO DISTRICTS"""
     
     
+    ##NEED TO GENERALIZE THE "with... as cursor" LINE TO ALLOW DIFFERENT FIELD NAMES
     if nx.is_empty(stateG)==True:
         with arcpy.da.SearchCursor(shapefile,["OBJECTID","SUM_Popula"]) as cursor:
+        with arcpy.da.SearchCursor(shapefile,[sf_name_field,sf_pop_field]) as cursor:
             for row in cursor:
                 popnum[row[0]] = row[1]
                 stateG.add_node(row[0])
+                popnum[row[0]] = row[1] #Finds population of each polygon
+                stateG.add_node(row[0]) #Adds each polygon to the node list for stateG
         with arcpy.da.SearchCursor(neighbor_list,nbrlist_fields) as cursor:
             for row in cursor:
                 cursor.reset
@@ -358,6 +417,7 @@ def main(*args):
                     #edges.append([row[0],row[1]])
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[3] 
+                distnum[row[0]]=row[3] #distnum[src_OBJECTID] = src_dist
         nx.set_node_attributes(stateG,popnum,"Population")
         nx.set_node_attributes(stateG,distnum,"District Number")
     nodes_for_G = []
@@ -373,8 +433,21 @@ def main(*args):
     G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
     
     
+        
+    if distnum == {}:
+        distnum = dict(stateG.nodes("District Number"))
+    if popnum == {}:
+        popnum = dict(stateG.nodes("Population"))
+        
+    #Finds nodes that are in district 1 or district 2
+    for v in distnum:
+        if distnum[v]==dist1 or distnum[v]==dist2:
+            nodes_for_G.append(v)
 
+    G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
     
+    arcprint("Vertices of G are {0}",sorted(G.nodes))
+    arcprint("Edges of G are {0}",sorted(G.edges))
     
 # Following line requires two-sided neighbor relationship. Maybe fix later.
 #    with arcpy.da.SearchCursor(neighbor_list, nbrlist_fields, """{}={} OR {}={}""".format(distfields[0], dist1,distfields[0],dist2)) as cursor:
@@ -388,9 +461,13 @@ def main(*args):
     
     arcprint("Edges of G are {0}",G.edges)
     arcprint("Vertices of G are {0}",G.nodes)
+    if nx.is_connected(G) == False:
+        arcprint("G is not connected. The connected components are {0}",list(nx.connected_components(G)))
+        sys.exit()
     
     T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
     arcprint("T edges are {0}",T.edges)
+    arcprint("T edges are {0}",sorted(T.edges))
     if popnum != {}:   
         nx.set_node_attributes(T,popnum,"Population") 
     else:
@@ -420,18 +497,23 @@ def main(*args):
             elif stateG.nodes[i]["District Number"] == dist2:
                 s1d2count +=1
         
+        #Assigns either dist1 or dist2 to the changed polygons
         if s0d1count + s1d2count >= s0d2count + s1d1count:
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist1
+                distnum[i] = dist1
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist2
+                distnum[i] = dist2
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
             
         else:
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist2
+                distnum[i] = dist2
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist1
+                distnum[i] = dist1
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
         
         #Updates the neighbor list table after each iteration
@@ -444,11 +526,14 @@ def main(*args):
 #                    cursor.updateRow(row)
                         
                         
+    
+    #Returns values if this script was called by another script
     if __name__ != "__main__":
         return(dist1_pop, dist2_pop,stateG,G,nlf)
     #    IterationCount += 1
     #    if IterationCount==1:
     #        StopCriterion = True
+
 
 if __name__ == "__main__":
     main()

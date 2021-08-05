@@ -40,6 +40,7 @@ def arcerror(message,*variables):
         raise RuntimeError("No value for runspot has been assigned")
 
 ### START MAIN CODE
+global runspot
 if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
     runspot = "ArcGIS"
     arcprint("We are running this from inside ArcGIS")
