@@ -170,7 +170,6 @@ def main(*args):
             sf_pop_field = "SUM_Popula"
             sf_name_field = "OBJECTID"
             distcount=7
-            MaxIter=100
             MaxIter=10
             T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
             coolingrate = 0.9975
@@ -398,7 +397,21 @@ def main(*args):
 #    m = arcpy.mp.ArcGISProject("CURRENT").activeMap #Finds active map. 
 #    addTab = arcpy.mp.Table(path + "\\" + out_table)
 #    m.addTable(addTab) #Adds table to Table of Contents
-                
+            
+    #Adds the out_table as a layer file to the contents pane in my map
+    aprx = arcpy.mp.ArcGISProject(currentdir + "\\SC_Redistricting_Updated.aprx")
+    aprxMap = aprx.listMaps("Map")[0] 
+    aprxMap.addDataFromPath(out_table)
+    aprx.save()
+    
+    #Updates Symbology
+    lyr = aprxMap.listLayers()[0]
+    sym = lyr.symbology
+    sym.updateRenderer('UniqueValueRenderer')
+    sym.renderer.fields = ['Dist_Assgn']
+    lyr.symbology = sym
+    aprx.save()
+    
     
 #END FUNCTIONS    
 if __name__ == "__main__":
