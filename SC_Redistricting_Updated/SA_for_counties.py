@@ -2,7 +2,7 @@
 """
 Created on Thu Apr 15 16:52:28 2021
 
-@author: blake
+@author: Blake Splitter
 """
 ### IMPORTANT ASSUMPTION: WE ASSUME THAT THE FIRST COLUMN OF THE FEATURE LAYER
 ### IS AN ID COLUMN THAT UNIQUELY LABELS EACH ROW WITH THE NUMBERS 1-X, WHERE
@@ -11,21 +11,76 @@ Created on Thu Apr 15 16:52:28 2021
 #TO DO LIST
 "#1. Change argv stuff --- DONE (Blake)"
 #2. Consider new starting temperatures and whatnot
-#3. Use build-balanced-zones
-#4. Figure out what to do with x
-#5. Need to update boundary list with each pass through the code
+"#3. Use build-balanced-zones --- DONE (Blake)"
+"#4. Figure out what to do with x --- DONE. Essentially deleted. (Blake)"
+"#5. Need to update boundary list with each pass through the code --- DONE (Blake)"
 #6. Need to measure initial energy
 #7. Need to generalize odn stuff
 #8. Consider adjusting smallest possible temperature
+#9. Determine how to add a map to the contents pane if and only if it is not already there.
+#10. Make this code create its own neighbor list
+#11. Consider appending population field and custom naming field to out_table
+#12. Add timers to time sections of code
+#13. Reconsider starting temperatures so that 
 
 import arcpy,math,os,sys
 import random
-#seed = 1738
-#random.seed(seed)
+seed = 1743
+random.seed(seed)
 import CreateSpanningTree
+import FindBoundaryShapes
 import networkx as nx
 
-def FieldCheck(in_table):
+def Flip():
+    '''THE FOLLOWING CODE IS ESSENTIALLY THE FLIP ALGORITHM
+        
+        
+        randshape = 45000
+        adder = random.randint(0,45)
+        randshape = randshape + adder*2+1
+        #This cursor line updates one preinct at a time. 
+        with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"""{0}='{1}'""".format(NameField,randshape)) as cursor:
+        #with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"GEOID20 = '27'") as cursor:
+            for row in cursor:
+                currdist = int(row[1])
+                distpop = row[2]
+                #Ensures that the district assignment is actually changed
+                while currdist == row[1]:
+                    row[1] = random.randint(1,distcount)
+                newdist = row[1]
+                #subtracts population from district with fewer people
+                sumpop[currdist-1] = sumpop[currdist-1] - distpop
+                #adds population to district that just gained people
+                sumpop[newdist-1] = sumpop[newdist-1] + distpop
+                #arcprint("sumpop is {0}",sumpop) 
+                cursor.updateRow(row)   
+        deviation[count] = DeviationFromIdealPop(sumpop,idealpop,distcount)
+        #arcprint("absolute deviation is {0}",deviation[count])    
+        DeltaE = deviation[count] - deviation[count-1]
+        arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
+        if DeltaE <0:
+            T = T*.997
+            continue
+        else :
+            rand = random.uniform(0,1)
+            try: 
+                p = 1/math.exp(DeltaE/T)
+            except OverflowError:
+                p = 0
+            arcprint("p = {0}. rand = {1}",p,rand)
+            if rand<=p:
+                T = T*.997
+                continue
+            else: #undoes the district changes previously made. 
+                count = count-1
+                sumpop[currdist-1] = sumpop[currdist-1] + distpop
+                sumpop[newdist-1] = sumpop[newdist-1] - distpop
+                with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"{0} = '{1}'".format(NameField,randshape)) as cursor:
+                    for row in cursor:
+                        row[1] = currdist
+                        cursor.updateRow(row)'''
+
+def AddDistField(in_table):
     lstFields = arcpy.ListFields(in_table)
     DistField = "Dist_Assgn"
     x = False
@@ -47,11 +102,12 @@ def DeviationFromIdealPop(sumpop,idealpop,distcount):
     deviation_ = round(deviation_)
     return(deviation_)
         
-def FindBoundaryShapes(in_table,neighbor_list):
-    if neighbor_list == None:
-        uniquename = arcpy.CreateUniqueName(in_table + "_neighbor_list")
-        arcpy.PolygonNeighbors_analysis(in_table, uniquename,None,None,None,None,"KILOMETERS")
-        
+#def FindBoundaryShapes(in_table,neighbor_list):
+#    if neighbor_list == None:
+#        uniquename = arcpy.CreateUniqueName(in_table + "_neighbor_list")
+#        arcpy.PolygonNeighbors_analysis(in_table, uniquename,None,None,None,None,"KILOMETERS")
+
+#%%NO LONGER USED   
 def FindNamingFields(in_table):
     lstFields = arcpy.ListFields(in_table)
     namefields=[]
@@ -76,6 +132,8 @@ def FindNamingFields(in_table):
         if breakflag==1:
             break
     return(namefields,distfields)
+    
+#%%
     
 def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list):
     T=T*coolingrate
@@ -144,71 +202,95 @@ def main(*args):
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         in_table = sys.argv[1]
-        sf_pop_field = sys.argv[2]
-        sf_name_field = sys.argv[3]
+        in_pop_field = sys.argv[2]
+        in_name_field = sys.argv[3]
         distcount = int(sys.argv[4])
         MaxIter = int(sys.argv[5])
         T = float(sys.argv[6])
         coolingrate = float(sys.argv[7])
         tol = float(sys.argv[8])
-        neighbor_list = sys.argv[9]
+        #neighbor_list = sys.argv[9]
         maxstopcounter = sys.argv[10]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
-            sf_pop_field = args[1]
-            sf_name_field = args[2]
+            in_pop_field = args[1]
+            in_name_field = args[2]
             distcount = int(args[3])
             MaxIter = int(args[4])
             T = float(args[5])
             coolingrate = float(args[6])
             tol = float(args[7])
-            neighbor_list = args[8]
+            #neighbor_list = args[8]
             maxstopcounter = args[9]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-            sf_pop_field = "SUM_Popula"
-            sf_name_field = "OBJECTID"
+            #in_table=path+"\\SC_Counties_2020"
+            #in_pop_field = "SUM_Popula"
+            in_table = path + "\\Precincts_2020"
+            in_pop_field = "Precinct_P"
+            in_name_field = "OBJECTID_1"
             distcount=7
             MaxIter=10
-            T = 123000+149000 #Initial Temperature = stdev(pop) + mean pop 
+            ###INITIAL TEMPS NEED TO BE ADJUSTED
+#            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
+#            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
+            T = 2500000
             coolingrate = 0.9975
             tol=30
-            neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
+            #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             maxstopcounter=100
             arcprint("We are using default input choices")
     
+    #Counts number of rows in out_table      
+    row_count = arcpy.GetCount_management(in_table).getOutput(0) #getOutput(0) returns the value at the first index position of a tool.
+    row_count=int(row_count)
+    
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
-    out_table = in_table + "_BuildBalancedZones"
-    no_of_dists=0
-    while no_of_dists!=distcount:
-        no_of_dists=0
-        arcprint("Running BuildBalancedZones...")
-        arcpy.stats.BuildBalancedZones(in_table,out_table,"NUMBER_OF_ZONES",distcount,None,None,"CONTIGUITY_EDGES_ONLY",None, "COMPACTNESS",[[sf_pop_field,"average"]])
-        with arcpy.da.SearchCursor(out_table, "ZONE_ID") as cursor:
-            for row in cursor:
-                if no_of_dists<row[0]:
-                    no_of_dists=int(row[0])
+    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
+    #out_table = arcpy.CreateUniqueName(in_table + "_SA")
+#    no_of_dists=0
+#    while no_of_dists!=distcount:
+#        no_of_dists=0
+#        arcprint("Running BuildBalancedZones...")
+#        #arcpy.stats.BuildBalancedZones(in_table,out_table,"NUMBER_OF_ZONES",distcount,None,None,"CONTIGUITY_EDGES_ONLY",None, None,[[in_pop_field,"average"]])
+#        arcpy.stats.BuildBalancedZones(in_table,out_table,"NUMBER_OF_ZONES",distcount,None,None,"CONTIGUITY_EDGES_ONLY",None, None,None)
+#        #The following code ensures that exactly distcount districts were created
+#        with arcpy.da.SearchCursor(out_table, "ZONE_ID") as cursor:
+#            for row in cursor:
+#                if no_of_dists<row[0]:
+#                    no_of_dists=int(row[0])
+                    
+                    
+    #Trying to use Spatially Constrained Multivariate Clustering instead of BBZ
+    if not arcpy.ListFields(in_table, "Test_val"): #if field does not exist
+        arcpy.AddField_management(in_table, "Test_val","LONG",field_alias="Test_val")
+    with arcpy.da.UpdateCursor(in_table, 'Test_val') as cursor:
+        for row in cursor:
+            row[0] = random.randint(1,100000)
+            cursor.updateRow(row)
+    arcprint("Running Spatially Constrained Multivariate Clustering...")
+    arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
+    
+    
+    #Adds populations as a column in out_table
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
+    
+    FindBoundaryShapes.main(out_table)
+    #global neighbor_list
+    neighbor_list = out_table + "_nbr_list"
+#    locked = arcpy.TestSchemaLock(neighbor_list)
+#    arcprint("On line 248, Lock status was {0}",locked)
     
     #Returns DistField "Dist_Assgn" and creates the field if it's not already there
-    DistField = FieldCheck(out_table)
-    #arcprint("DistField is {0}",DistField)
-    
-    
-    
-### THIS IS FOR PROOF OF CONCEPT. TO BE REPLACED BY 'BUILD BALANCED ZONES' LATER
-    with arcpy.da.UpdateCursor(out_table, ["Dist_Assgn","ZONE_ID"]) as cursor:
+    DistField = AddDistField(out_table)
+
+    # Copies all CLUSTER_ID's into Dist_Assgn
+    with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID"]) as cursor:
         for row in cursor:
             row[0] = row[1]
             cursor.updateRow(row)
-    
-    
-    
-    """NEXT FEW LINES SHOULD BE CHANGED SO THAT RANDOM DISTRICTING IS RUN INSTEAD"""
       
-    #Counts number of rows in out_table      
-    row_count = arcpy.GetCount_management(out_table).getOutput(0) #getOutput(0) returns the value at the first index position of a tool.
-    row_count=int(row_count)
+
     
 #    #Finds field name for population
 #    lstFields = arcpy.ListFields(out_table)
@@ -223,9 +305,9 @@ def main(*args):
     #Finds sum of each district population
     sumpop=[]
     sumpop = [0]*distcount
-    with arcpy.da.SearchCursor(out_table, [sf_pop_field,DistField]) as cursor:
+    with arcpy.da.SearchCursor(out_table, [in_pop_field,DistField]) as cursor:
         for row in cursor:
-            #i = district number minus 1, since district numbers range from 1 to 7
+            #i = district number minus 1, since district numbers range from 1 to distcount
             i = row[1]-1
             i = int(i)
             sumpop[i] = row[0] + sumpop[i]
@@ -235,23 +317,29 @@ def main(*args):
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
+    fieldexist=False
     lstFields = arcpy.ListFields(neighbor_list)
+#    locked = arcpy.TestSchemaLock(neighbor_list)
+#    arcprint("On line 292, Lock status was {0}",locked)
+    for field in lstFields:
+        if field.name == "src_dist":
+            fieldexist=True
+            break
+    if fieldexist==False: #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
+        arcpy.AddField_management(neighbor_list, "src_dist", "SHORT", field_alias="Source District")
+        arcpy.AddField_management(neighbor_list, "nbr_dist", "SHORT", field_alias="Neighbor District")
     orig_dist_names=[]
     for field in lstFields:
-        if field.name in ["src_CLUSTER_ID", "src_Dist_Assgn", "nbr_CLUSTER_ID", "nbr_Dist_Assgn"]:
+        if field.name in ["src_CLUSTER_ID", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID"]:
             orig_dist_names.append(field.name)
     odn=orig_dist_names #An alias
-    arcprint("odn is {0}",odn)
+    
     with arcpy.da.UpdateCursor(neighbor_list, [odn[0],odn[1],'src_dist', 'nbr_dist']) as cursor:
         for row in cursor:
             row[2]=row[0] #src_dist = src_CLUSTER_ID
             row[3]=row[1] #nbr_dist = nrb_CLUSTER_ID
             cursor.updateRow(row)
     
-#    #Maybe delete x from below
-#    [NameField,x] = FindNamingFields(out_table)
-#    NameField = NameField[0]
-#    arcprint("The NameField is '{0}'",NameField)
     hypsumpop=sumpop.copy()
     stateG = nx.Graph()
     
@@ -259,7 +347,7 @@ def main(*args):
     count = 0 #The number of iterations in which a change was made
     stopcounter=0 #The number of consecutive iterations in which a change was NOT made
     
-    while T>0.1 and count <MaxIter and stopcounter<maxstopcounter:
+    while T>0.1 and count<MaxIter and stopcounter<maxstopcounter:
         arcprint("\ncount = {0}. About to add 1.",count)
         if count == 20:
             arcprint("count is 20")
@@ -271,19 +359,20 @@ def main(*args):
             dist2 = random.randint(1,distcount)
         arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
         try:
-#            hypstateG = nx.Graph()
-            [dist1_pop, dist2_pop,hypstateG, hypG,nlf] = CreateSpanningTree.main(out_table,sf_pop_field,sf_name_field,tol,neighbor_list, dist1, dist2, stateG)
-#            arcprint("(SA) Edges of G are {0}",hypG.edges)
-#            arcprint("(SA) Vertices of G are {0}",hypG.nodes)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
-            count=count-1
-            stopcounter +=1
+            count -= 1
+            stopcounter += 1
+            continue
+        except SystemError:
+            arcprint("We had a system error. Selecting new districts")
+            count -= 1
+            stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
             continue
         if dist1_pop==float('inf') or dist2_pop==float('inf'):
-            count=count-1
+            count-=1
             stopcounter+=1
-            #arcprint("The populations were infinity")
             continue
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
@@ -304,76 +393,28 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 [T,sumpop,stateG,neighbor_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list)
-                stopcounter=0
+                stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
                 count = count-1
-                stateG=nx.Graph()
+                nx.set_node_attributes(stateG,prevdists,"District Number")
                 stopcounter+=1
-                arcprint("The change was rejected.")
-                
+                arcprint("The change was rejected, since p < rand.")
         
-        '''THE FOLLOWING CODE IS ESSENTIALLY THE FLIP ALGORITHM
-        
-        
-        randshape = 45000
-        adder = random.randint(0,45)
-        randshape = randshape + adder*2+1
-        #This cursor line updates one preinct at a time. 
-        with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"""{0}='{1}'""".format(NameField,randshape)) as cursor:
-        #with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"GEOID20 = '27'") as cursor:
-            for row in cursor:
-                currdist = int(row[1])
-                distpop = row[2]
-                #Ensures that the district assignment is actually changed
-                while currdist == row[1]:
-                    row[1] = random.randint(1,distcount)
-                newdist = row[1]
-                #subtracts population from district with fewer people
-                sumpop[currdist-1] = sumpop[currdist-1] - distpop
-                #adds population to district that just gained people
-                sumpop[newdist-1] = sumpop[newdist-1] + distpop
-                #arcprint("sumpop is {0}",sumpop) 
-                cursor.updateRow(row)   
-        deviation[count] = DeviationFromIdealPop(sumpop,idealpop,distcount)
-        #arcprint("absolute deviation is {0}",deviation[count])    
-        DeltaE = deviation[count] - deviation[count-1]
-        arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
-        if DeltaE <0:
-            T = T*.997
-            continue
-        else :
-            rand = random.uniform(0,1)
-            try: 
-                p = 1/math.exp(DeltaE/T)
-            except OverflowError:
-                p = 0
-            arcprint("p = {0}. rand = {1}",p,rand)
-            if rand<=p:
-                T = T*.997
-                continue
-            else: #undoes the district changes previously made. 
-                count = count-1
-                sumpop[currdist-1] = sumpop[currdist-1] + distpop
-                sumpop[newdist-1] = sumpop[newdist-1] - distpop
-                with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"{0} = '{1}'".format(NameField,randshape)) as cursor:
-                    for row in cursor:
-                        row[1] = currdist
-                        cursor.updateRow(row)'''
     if T<=0.1:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)
     if count >=MaxIter:
         arcprint("\nMaximum number of iterations reached. count = {0} and MaxIter = {1}", count, MaxIter)
     if stopcounter ==maxstopcounter:
         arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
-    arcprint("Original deviation = {0}. Final deviation = {1}",deviation[0],deviation[count])
-    arcprint("sumpop is {0}",sumpop)
+    arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
+    arcprint("The population of each district is {0}",sumpop)
     
     #Repopulates stateG if it was emptied during a rejection step in the algorithm
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
     popnum = {} #Initializes a dictionary that will contain the population for each polygon
     if nx.is_empty(stateG)==True:
-        with arcpy.da.SearchCursor(out_table,[sf_name_field,sf_pop_field]) as cursor:
+        with arcpy.da.SearchCursor(out_table,["SOURCE_ID",in_pop_field]) as cursor:
             for row in cursor:
                 popnum[row[0]] = row[1] #Finds population of each polygon
                 stateG.add_node(row[0]) #Adds each polygon to the node list for stateG
@@ -387,21 +428,19 @@ def main(*args):
         nx.set_node_attributes(stateG,distnum,"District Number")
     
     #Updates the shapefile with current district numbers
-    with arcpy.da.UpdateCursor(out_table,[sf_name_field,"Dist_Assgn"]) as cursor:
+    with arcpy.da.UpdateCursor(out_table,["SOURCE_ID","Dist_Assgn"]) as cursor:
         for row in cursor:
             objid= row[0]
             row[1] = stateG.nodes[objid]["District Number"]
             cursor.updateRow(row)
             
-#    #Adds the map to the Contents pane      
-#    m = arcpy.mp.ArcGISProject("CURRENT").activeMap #Finds active map. 
-#    addTab = arcpy.mp.Table(path + "\\" + out_table)
-#    m.addTable(addTab) #Adds table to Table of Contents
-            
     #Adds the out_table as a layer file to the contents pane in my map
     aprx = arcpy.mp.ArcGISProject(currentdir + "\\SC_Redistricting_Updated.aprx")
     aprxMap = aprx.listMaps("Map")[0] 
-    aprxMap.addDataFromPath(out_table)
+    layername = out_table.replace(path+'\\','')
+    layer = aprxMap.listLayers(layername)
+    if not layer: #if the layer currently does not exist in the table of contents:
+        aprxMap.addDataFromPath(out_table)
     aprx.save()
     
     #Updates Symbology

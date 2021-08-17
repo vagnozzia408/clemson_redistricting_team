@@ -29,8 +29,8 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os, sys
 import random
-seed = 1742
-random.seed(seed)
+#seed = 1742
+#random.seed(seed)
 #from random import randint
 import networkx as nx
 #from openpyxl import load_workbook
@@ -117,7 +117,7 @@ def FindEdgeCut(tree,tol,criteria):
         subgraphs_lst = list(subgraphs)
         subgraphs_lst[0] = sorted(subgraphs_lst[0])
         subgraphs_lst[1] = sorted(subgraphs_lst[1])
-        arcprint("The subgraph candidates are {0}.",subgraphs_lst)
+        #arcprint("The subgraph candidates are {0}.",subgraphs_lst)
         dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
         dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
 #        if criteria == "Population":
@@ -127,7 +127,7 @@ def FindEdgeCut(tree,tol,criteria):
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
-            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
+            #arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
@@ -161,6 +161,21 @@ def arcerror(message,*variables):
     else: 
         raise RuntimeError("No value for runspot has been assigned")
 
+#Same as arcerror, but raises a different type of error.         
+def arcerror2(message,*variables):
+    '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
+    if runspot == "ArcGIS":
+        arcpy.AddError(message.format(*variables))
+    elif runspot == "console":
+        newmessage=message
+        j=0
+        while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
+            j=j+1
+        raise SystemError(newmessage)
+    else: 
+        raise SystemError("No value for runspot has been assigned")
+
 #%% MAIN CODE STARTS HERE
 def main(*args):
     
@@ -192,7 +207,7 @@ def main(*args):
         stateG = sys.argv[8]
         #idealpop=float(sys.argv[7])
         del stateG #We can't insert a graph from the ArcGIS input line
-        arcprint("We are using arguments from a command line")
+        arcprint("Running CreateSpanningTree from command line arguments")
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             shapefile = args[0]
@@ -204,7 +219,7 @@ def main(*args):
             dist2 = int(args[6])
             stateG = args[7]
             #idealpop = args[8]
-            arcprint("Using input from another file")
+            arcprint("Running CreateSpanningTree using input from another script")
         except IndexError: #Finally, manually assigns input values if they aren't provided
             shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             sf_pop_field = "SUM_Popula"
@@ -214,12 +229,15 @@ def main(*args):
             dist1=6
             dist2=4
             #idealpop = 717252
-            arcprint("We are using default input choices")
+            arcprint("Running CreateSpanningTree using default input choices")
 
     #arcprint("sf_pop_field is {0} and is type {1}",sf_pop_field, type(sf_pop_field))
    
     try: 
-        stateG = stateG #Doesn't do anything, but if stateG doesn't exist, it will produce an UnboundLocalError
+        prevdists = {}
+        prevdists = stateG.nodes("District Number")
+        prevdists = dict(prevdists)
+        #stateG = stateG #Doesn't do anything, but if stateG doesn't exist, it will produce an UnboundLocalError
     except UnboundLocalError:
         #global stateG ## Maybe unnecessary?
         stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
@@ -239,7 +257,7 @@ def main(*args):
     lstFields = arcpy.ListFields(neighbor_list) #Updates lstFields
     orig_dist_names=[]
     for field in lstFields:
-        if field.name in ["src_CLUSTER_ID", "src_Dist_Assgn", "nbr_CLUSTER_ID", "nbr_Dist_Assgn"]:
+        if field.name in ["src_CLUSTER_ID", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID"]:
             orig_dist_names.append(field.name) #Creats a list that has the original field names that describe the district the polygons are in
     odn=orig_dist_names #An alias
     
@@ -250,6 +268,8 @@ def main(*args):
                 row[2]=row[0] #src_dist = src_CLUSTER_ID
                 row[3]=row[1] #nbr_dist = nbr_CLUSTER_ID
                 cursor.updateRow(row)
+            del row
+        del cursor
     
     [namefields,distfields,nbrlist_fields] = FindNamingFields(neighbor_list) #Finds field names for neighbor_list
     nlf = nbrlist_fields #An alias
@@ -263,6 +283,7 @@ def main(*args):
             if AdjFlag>=1:
                 arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
                 break
+    del cursor
 
 #    ## Where Amy's code edits start.
 #    dist1_bdnds = [] #Creates empty list of boundary units for dist1
@@ -301,7 +322,7 @@ def main(*args):
 
     if AdjFlag==0: 
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
-        arcerror("")
+        arcerror2("")
     
     ## Where Amy's code edits end.
     
@@ -310,18 +331,20 @@ def main(*args):
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
     popnum = {} #Initializes a dictionary that will contain the population for each polygon
     
-    ##NEED TO GENERALIZE THE "with... as cursor" LINE TO ALLOW DIFFERENT FIELD NAMES
     if nx.is_empty(stateG)==True:
         with arcpy.da.SearchCursor(shapefile,[sf_name_field,sf_pop_field]) as cursor:
             for row in cursor:
                 popnum[row[0]] = row[1] #Finds population of each polygon
                 stateG.add_node(row[0]) #Adds each polygon to the node list for stateG
+                del row
+            del cursor
         with arcpy.da.SearchCursor(neighbor_list,nbrlist_fields) as cursor:
             for row in cursor:
                 cursor.reset
                 if list(stateG.edges).count([row[0],row[1]])==0 and list(stateG.edges).count([row[1],row[0]])==0:
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[3] #distnum[src_OBJECTID] = src_dist
+            del cursor
         nx.set_node_attributes(stateG,popnum,"Population")
         nx.set_node_attributes(stateG,distnum,"District Number")
     nodes_for_G = []
@@ -338,15 +361,15 @@ def main(*args):
 
     G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
     
-    arcprint("Vertices of G are {0}",sorted(G.nodes))
-    arcprint("Edges of G are {0}",sorted(G.edges))
+    #arcprint("Vertices of G are {0}",sorted(G.nodes))
+    #arcprint("Edges of G are {0}",sorted(G.edges))
 
     if nx.is_connected(G) == False:
-        arcprint("G is not connected. The connected components are {0}",list(nx.connected_components(G)))
+        arcprint("G is not connected. The connected components are {0}",sorted(list(nx.connected_components(G))))
         sys.exit()
     
     T = wilson(G,random) #Creates a uniform random spanning tree for G using Wilson's algorithm
-    arcprint("T edges are {0}",sorted(T.edges))
+    #arcprint("T edges are {0}",sorted(T.edges))
     if popnum != {}:   
         nx.set_node_attributes(T,popnum,"Population") 
     else:
@@ -397,7 +420,8 @@ def main(*args):
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,stateG,G,nlf)
+        return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists)
+
 
 if __name__ == "__main__":
     main()

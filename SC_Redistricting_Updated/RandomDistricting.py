@@ -7,8 +7,6 @@ Created on Thu Apr 22 16:57:08 2021
 
 "The goal of this code is to create a random contiguous districting on the polygons given as input"
 
-runspot="ArcGIS"
-
 import arcpy, numpy, os, sys
 
 def arcprint(message,*variables):

@@ -7,7 +7,7 @@ Created on Fri Jul 23 13:04:43 2021
 
 import arcpy,os, sys
 #import CreateSpanningTree
-import numpy as np
+#import numpy as np
 import math
 from arcpy.sa import *
 
@@ -76,7 +76,6 @@ def main(*args):
         dist1=int(sys.argv[2])
         dist2=int(sys.argv[3])
         shapefile=sys.argv[4]
-        tol=float(sys.argv[5])
         ###NEED TO ADD stateG HERE SOMEHOW
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
@@ -84,16 +83,11 @@ def main(*args):
             dist1 = int(args[1])
             dist2 = int(args[2])
             shapefile = args[3]
-            tol=float(args[4])
-            stateG = args[5]
         except IndexError: #Finally, manually assigns input values if they aren't provided
             neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             dist1=2
-            #dist1=randint(1,7) #Randomly selecting districts
             dist2=7
-            #dist2=randint(1,7) #Randonly selecting districts
             shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-            tol=30
             arcprint("We are using default input choices")
 
     # Run Compactness Scores the first time and list the list DistrictList
