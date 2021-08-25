@@ -30,6 +30,7 @@ random.seed(seed)
 import CreateSpanningTree
 import FindBoundaryShapes
 import networkx as nx
+import GraphMeasures
 
 def Flip():
     '''THE FOLLOWING CODE IS ESSENTIALLY THE FLIP ALGORITHM
@@ -226,11 +227,12 @@ def main(*args):
         except IndexError: #Finally, manually assigns input values if they aren't provided
             #in_table=path+"\\SC_Counties_2020"
             #in_pop_field = "SUM_Popula"
+            #in_name_field = "OBJECTID"
             in_table = path + "\\Precincts_2020"
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=200
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
@@ -339,6 +341,8 @@ def main(*args):
             row[2]=row[0] #src_dist = src_CLUSTER_ID
             row[3]=row[1] #nbr_dist = nrb_CLUSTER_ID
             cursor.updateRow(row)
+    
+    DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     
     hypsumpop=sumpop.copy()
     stateG = nx.Graph()

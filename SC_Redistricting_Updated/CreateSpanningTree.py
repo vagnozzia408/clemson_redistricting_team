@@ -29,8 +29,8 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os, sys
 import random
-#seed = 1742
-#random.seed(seed)
+seed = 1738
+random.seed(seed)
 #from random import randint
 import networkx as nx
 #from openpyxl import load_workbook
