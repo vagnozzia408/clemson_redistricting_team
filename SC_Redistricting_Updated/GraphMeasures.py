@@ -15,6 +15,11 @@ class District:
     Area = 0
     Perimeter = 0
     ppCompactScore = 0
+    Units = [] #This list will need to contain a list of IDs corresponding to the units currently in the district, may be redundant
+    NumUnits = 0
+    VoteCountRed = 0
+    VoteCountBlue = 0
+    EfficencyGap = 0 #This will be terms of the dist: wastedRed votes in this district - wastedblue votes in this district, divided by total number of votes
     Original = True
     
     def __init__(self, ID):
@@ -24,6 +29,9 @@ class District:
         self.Area = a
         self.Perimeter = p
         self.ppCompactScore = ppc
+        
+    def UpdateCMPStats(self, eg):
+        self.EfficencyGap = eg
         
 def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
@@ -37,6 +45,39 @@ def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList):
         for row in cursor:
             DistrictList[row[1]-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
             DistrictList[row[1]-1].Original = False
+    return DistrictList
+
+
+def CompetitionUpdate(dist1, dist2, DistrictList):
+    DistrictList[dist1 - 1].VoteCountRed = 0
+    DistrictList[dist1 - 1].VoteCountBlue = 0
+    DistrictList[dist2 - 1].VoteCountRed = 0
+    DistrictList[dist2 - 1].VoteCountBlue = 0
+    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "Cluster_ID", "Vote_Red", "Vote_Blue"], '''{}={} OR {}={}'''.format("Cluster_ID",dist1,"Cluster_ID",dist2)) as cursor:
+        for row in cursor:
+            DistrictList[row[1] - 1].VoteCountRed += row[2]
+            DistrictList[row[1] - 1].VoteCountBlue += row[3]
+    wastedRed = 0
+    wastedBlue = 0
+    EG = 0
+    dis = DistrictList[dist1-1]
+    if dis.VoteCountRed > dis.VoteCountBlue:
+        wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+        wastedBlue = dis.VoteCountBlue
+    else :
+        wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+        wastedRed = dis.VoteCountRed
+    EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
+    dis.UpdateCMPStats(EG)
+    dis = DistrictList[dist2-1]
+    if dis.VoteCountRed > dis.VoteCountBlue:
+        wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+        wastedBlue = dis.VoteCountBlue
+    else :
+        wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+        wastedRed = dis.VoteCountRed
+    EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
+    dis.UpdateCMPStats(EG)
     return DistrictList
 
 def arcprint(message,*variables):
@@ -99,6 +140,25 @@ def main(*args):
             DistrictList.append(District(row[1]))
             DistrictList[-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
     
+#    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "Cluster_ID", "Vote_Red", "Vote_Blue"], "*") as cursor:
+#        for row in cursor:
+#            DistrictList[row[1] - 1].VoteCountRed += row[2]
+#            DistrictList[row[1] - 1].VoteCountBlue += row[3]
+#    
+#    wastedRed = 0
+#    wastedBlue = 0
+#    EG = 0
+#    for dis in DistrictList:
+#        if dis.VoteCountRed > dis.VoteCountBlue:
+#            wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+#            wastedBlue = dis.VoteCountBlue
+#        else :
+#            wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+#            wastedRed = dis.VoteCountRed
+#        EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
+#        dis.UpdateCMPStats(EG)
+        
+        
     return(DistrictList)
         
 if __name__ == "__main__":
