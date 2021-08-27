@@ -25,10 +25,10 @@ class District:
         self.Perimeter = p
         self.ppCompactScore = ppc
         
-def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList):
+def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList,zoneField):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
     inZoneData = shapefile
-    zoneField = "Cluster_ID"
+    #zoneField = "Cluster_ID"
     outTable = path + "\\TempDistrictZonalGeometry"
     #cellSize = 1.28781240014216E-02
     arcpy.CheckOutExtension("Spatial")
@@ -91,9 +91,7 @@ def main(*args):
     #cellSize = 1
     arcpy.CheckOutExtension("Spatial")
     DistrictList = []  
-    arcprint("This is line 94")
     arcpy.sa.ZonalGeometryAsTable(inZoneData, zoneField, outTable)
-    arcprint("This is line 96")
     with arcpy.da.SearchCursor(outTable, "*", "*") as cursor:
         for row in cursor:
             DistrictList.append(District(row[1]))

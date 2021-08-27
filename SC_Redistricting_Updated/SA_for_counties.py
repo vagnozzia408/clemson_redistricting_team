@@ -136,7 +136,7 @@ def FindNamingFields(in_table):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -152,7 +152,16 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list):
             cursor.updateRow(row)
         del cursor
         del row
-    return(T,sumpop,stateG,neighbor_list)
+    
+    #Updates the shapefile with current district numbers
+    with arcpy.da.UpdateCursor(out_table,["SOURCE_ID",DistField], '''{}={} OR {}={}'''.format(DistField,dist1,DistField,dist2)) as cursor:
+        for row in cursor:
+            objid= row[0]
+            row[1] = stateG.nodes[objid]["District Number"]
+            cursor.updateRow(row)
+    DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2,out_table,path,DistrictStats,DistField)
+    
+    return(T,sumpop,stateG,neighbor_list,DistrictStats)
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -193,6 +202,9 @@ def main(*args):
         arcprint("We are running this from the python console")   
             
     # Set environment settings
+    global currentdir
+    global path
+    
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     arcpy.env.workspace = path
@@ -225,14 +237,14 @@ def main(*args):
             #neighbor_list = args[8]
             maxstopcounter = args[9]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            #in_table=path+"\\SC_Counties_2020"
-            #in_pop_field = "SUM_Popula"
-            #in_name_field = "OBJECTID"
-            in_table = path + "\\Precincts_2020"
-            in_pop_field = "Precinct_P"
-            in_name_field = "OBJECTID_1"
+            in_table=path+"\\SC_Counties_2020"
+            in_pop_field = "SUM_Popula"
+            in_name_field = "OBJECTID"
+#            in_table = path + "\\Precincts_2020"
+#            in_pop_field = "Precinct_P"
+#            in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=200
+            MaxIter=10
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
@@ -266,6 +278,7 @@ def main(*args):
     #Trying to use Spatially Constrained Multivariate Clustering instead of BBZ
     if not arcpy.ListFields(in_table, "Test_val"): #if field does not exist
         arcpy.AddField_management(in_table, "Test_val","LONG",field_alias="Test_val")
+        arcprint("Adding 'Test_val' field to in_table")
     with arcpy.da.UpdateCursor(in_table, 'Test_val') as cursor:
         for row in cursor:
             row[0] = random.randint(1,100000)
@@ -342,6 +355,7 @@ def main(*args):
             row[3]=row[1] #nbr_dist = nrb_CLUSTER_ID
             cursor.updateRow(row)
     
+    global DistrictStats
     DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     
     hypsumpop=sumpop.copy()
@@ -384,8 +398,9 @@ def main(*args):
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE = deviation[count] - deviation[count-1]
         arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
+        arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
         if DeltaE <0: #An improvement!
-            [T,sumpop,stateG,neighbor_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list)
+            [T,sumpop,stateG,neighbor_list,DistrictStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -396,7 +411,7 @@ def main(*args):
                 p = 0 #If denominator in calculation above is large enough, an OverflowError will occur
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                [T,sumpop,stateG,neighbor_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -404,6 +419,8 @@ def main(*args):
                 nx.set_node_attributes(stateG,prevdists,"District Number")
                 stopcounter+=1
                 arcprint("The change was rejected, since p < rand.")
+                
+        
         
     if T<=0.1:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)
