@@ -21,6 +21,7 @@ class District:
     VoteCountBlue = 0
     WastedRed = 0
     WastedBlue = 0
+    BlueShare = 0
     EfficencyGap = 0 #This will be terms of the dist: wastedRed votes in this district - wastedblue votes in this district, divided by total number of votes
     Original = True
     
@@ -38,19 +39,136 @@ class District:
 class Map:
     ItNum = 0
     AvgPPCompactScore = 0
+    WastedVotesRed = 0
+    WastedVotesBlue = 0
+    TotalRedVotes = 0
+    TotalBlueVotes = 0 
     EG = 0 
+    Variance = 0
+    MedianMean = 0
+    BG_Modified = 0
     
     def __init__(self, itNum):
         self.ItNum = itNum
     
     def UpdateMapStats(self, DistrictList):
         totalpp = 0
-        totaleg = 0
+        # Runs through districtList to create AvgppCompactScore and EG and Median_Mean
+        AshareCpy = []
+        meansq = 0
+        mean = 0
         for dis in DistrictList:
             totalpp += dis.ppCompactScore
-            totaleg += dis.EfficencyGap
+            self.TotalRedVotes += dis.VoteCountRed
+            self.TotalBlueVotes += dis.VoteCountBlue
+            self.WastedVotesRed += dis.WastedRed
+            self.WastedVotesBlue += dis.WastedBlue
+            dis.BlueShare = dis.VoteCountBlue / (dis.TotalRedVotes + dis.TotalBlueVotes)
+            AshareCpy.append(dis.BlueShare.value)
+            meansq += pow(dis.BlueShare, 2)
+            mean += dis.BlueShare
         self.AvgPPCompactScore = totalpp / len(DistrictList)
-        self.EG = totaleg / len(DistrictList)
+        self.EG = (self.WastedVotesRed - self.WastedVotesBlue) / (self.TotalRedVotes + self.TotalBlueVotes) 
+        middle = (len(DistrictList) + 1)/ 2 # top median
+        AshareCpy.sort()
+        meansq = meansq/len(DistrictList)
+        mean = mean / len(DistrictList)
+        self.Variance = meansq - pow(mean,2)
+        if len(DistrictList) % 2 == 0:
+            median = (AshareCpy[middle] + AshareCpy[middle-1] ) / 2
+        else :
+            median = AshareCpy[middle - 1].value
+        mean = (self.TotalRedVotes + self.TotalBlueVotes) / len(DistrictList)
+        self.MedianMean = mean - median
+        
+        #This code is in the works, and may not possibly work as well. but here are my first attempts:
+        
+        # BG_Modified (done from Ashare: Democratic Vote Shares per District)
+        V = self.TotalBlueVotes / len(DistrictList)
+        V_Points = [2*len(DistrictList)]
+        V_Points[0] = V
+        for i in range(0, len(DistrictList) - 1):
+            new_v = 0
+            if DistrictList[i].BlueShare < 0.5:
+                new_v = 1 - (1-V)/(2*(1-DistrictList[i].BlueShare))
+            else :
+                new_v = V / (2*DistrictList[i].BlueShare)
+            V_Points[i+1] = new_v
+        V_Points.sort()
+        SV_Points = [2*len(DistrictList)]
+        for i in range(0, len(DistrictList) - 1):
+            SV_Points[i] = i / len(DistrictList)
+        for i in range(0, len(DistrictList) - 1):
+            if V_Points[i] == V_Points[i+1]: # if we observe two consecutive V_Points
+                if i == len(DistrictList) - 1: # if the last two points are consecutive
+                    m = (SV_Points[i+1] - SV_Points[i-1])/(V_Points[i+1] - V_Points[i-1])
+                    b = SV_Points[i-1] - m*V_Points[i-1]
+                    adj_V = (SV_Points[i]-b)/m
+                    if adj_V > V_Points[i-1] and adj_V < V_Points[i+1] :
+                        V_Points[i] = adj_V
+                else: # if the two consective points are NOT the last two
+                    m = (SV_Points[i+2] - SV_Points[i])/(V_Points[i+2]-V_Points[i])
+                    b = SV_Points[i]-m*V_Points[i]
+				    adj_V = (SV_Points[i+1]-b)/m
+                    if adj_V > V_Points[i] and adj_V < V_Points[i+2] :
+                        V_Points[i+1] = adj_V
+            # Otherwise do nothing
+        IV_Points = [2*len(DistrictList)]
+        ISV_Points = [2*len(DistrictList)]
+        for i in range(0, len(DistrictList) - 1):
+            IV_Points[i] = 1 - V_Points[len(DistrictList) - i]
+            ISV_Points[i] = 1 - SV_Points[len(DistrictList) - i]
+        k = 0
+        for i in range(0, len(DistrictList) - 1):
+            if ((V_Points[i] < IV_Points[i]) and (V_Points[i+1] > IV_Points[i+1])) or ((V_Points[i] > IV_Points[i]) or (V_Points[i+1] < IV_Points[i+1])) :
+                m1 = (SV_Points[i+1] - SV_Points[i])/(V_Points[i+1]-V_Points[i])  # DIVISION BY ZERO HAPPENS HERE. How do we get two consecutive V_Points???
+			    SV_Points[i] - m1*V_Points[i]
+                # Inverted Seats-Vote Line Segment
+                m2 = (ISV_Points[i+1] - ISV_Points[i])/(IV_Points[i+1]-IV_Points[i])
+			    b2 = ISV_Points[i] - m2*IV_Points[i]
+                # Intersection Point
+                x = (b2-b1)/(m1-m2)
+			    y = m1 * x + b1
+                # Add the intersection point.
+			    V_Points[g_NUMDISTRICTS+k+1] = x
+			    IV_Points[g_NUMDISTRICTS+k+1] = x
+			    SV_Points[g_NUMDISTRICTS+k+1] = y
+			    ISV_Points[g_NUMDISTRICTS+k+1] = y
+                k += 1
+        V_Points.sort()
+        SV_Points.sort()
+        IV_Points.sort()
+        ISV_Points.sort()
+        
+        modified_geom_bias = 0
+        xmax = max(V_Points[len(DistrictList) + k], IV_Points[len(DistrictList) + k])
+        
+        for i in range(0, len(DistrictList) + k) :
+            # Area under Sears-Vote Curve using trapezoids
+            b1 = xmax - V_Points[i]
+            b2 = xmax - V_Points[i+1]
+            h = SV_Points[i+1] - SV_Points[i]
+            area1 = 0.5 * (b1_b2) * h
+            # Area under Inverted Sears-Vote Curve.
+            ib1 = xmax - IV_Points[i];
+            xmax - IV_Points[i+1];
+		    ISV_Points[i+1] - ISV_Points[i];
+		    area2 = 0.5 * (ib1+ib2) * ih;
+            
+            modified_geom_bias += abs(area2-area1)
+         self.BG_Modified = modified_geom_bias
+        
+                    
+                    
+        
+            
+        
+            
+            
+            
+        
+            
+            
             
         
         
@@ -98,6 +216,7 @@ def CompetitionUpdate(dist1, dist2, DistrictList):
         dis.WastedRed = dis.VoteCountRed
     dis.UpdateCMPStats((dis.WastedRed - dis.WastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue))
     return DistrictList
+    
 
 def AddNewMapStats(MapList, DistrictList, itCount):
     MapList.append(Map(itCount))
