@@ -19,6 +19,8 @@ class District:
     NumUnits = 0
     VoteCountRed = 0
     VoteCountBlue = 0
+    WastedRed = 0
+    WastedBlue = 0
     EfficencyGap = 0 #This will be terms of the dist: wastedRed votes in this district - wastedblue votes in this district, divided by total number of votes
     Original = True
     
@@ -76,28 +78,31 @@ def CompetitionUpdate(dist1, dist2, DistrictList):
         for row in cursor:
             DistrictList[row[1] - 1].VoteCountRed += row[2]
             DistrictList[row[1] - 1].VoteCountBlue += row[3]
-    wastedRed = 0
-    wastedBlue = 0
-    EG = 0
+
     dis = DistrictList[dist1-1]
     if dis.VoteCountRed > dis.VoteCountBlue:
-        wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
-        wastedBlue = dis.VoteCountBlue
+        dis.WastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+        dis.WastedBlue = dis.VoteCountBlue
+        
     else :
-        wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
-        wastedRed = dis.VoteCountRed
-    EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
-    dis.UpdateCMPStats(EG)
+        dis.WastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+        dis.WastedRed = dis.VoteCountRed
+    dis.UpdateCMPStats((dis.WastedRed - dis.WastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue))
     dis = DistrictList[dist2-1]
     if dis.VoteCountRed > dis.VoteCountBlue:
-        wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
-        wastedBlue = dis.VoteCountBlue
+        dis.WastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+        dis.WastedBlue = dis.VoteCountBlue
+        
     else :
-        wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
-        wastedRed = dis.VoteCountRed
-    EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
-    dis.UpdateCMPStats(EG)
+        dis.WastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+        dis.WastedRed = dis.VoteCountRed
+    dis.UpdateCMPStats((dis.WastedRed - dis.WastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue))
     return DistrictList
+
+def AddNewMapStats(MapList, DistrictList, itCount):
+    MapList.append(Map(itCount))
+    MapList[-1].UpdateMapStats(DistrictList)
+    return MapList
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -164,19 +169,17 @@ def main(*args):
 #            DistrictList[row[1] - 1].VoteCountRed += row[2]
 #            DistrictList[row[1] - 1].VoteCountBlue += row[3]
 #    
-#    wastedRed = 0
-#    wastedBlue = 0
-#    EG = 0
 #    for dis in DistrictList:
 #        if dis.VoteCountRed > dis.VoteCountBlue:
-#            wastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
-#            wastedBlue = dis.VoteCountBlue
+#            dis.WastedRed = (dis.VoteCountRed - dis.VoteCountBlue)/2
+#            dis.WastedBlue = dis.VoteCountBlue
 #        else :
-#            wastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
-#            wastedRed = dis.VoteCountRed
-#        EG = (wastedRed - wastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue)
-#        dis.UpdateCMPStats(EG)
-        
+#            dis.WastedBlue = (dis.VoteCountBlue - dis.VoteCountRed)/2
+#            dis.WastedRed = dis.VoteCountRed
+#        dis.UpdateCMPStats((dis.WastedRed - dis.WastedBlue) / (dis.VoteCountRed+dis.VoteCountBlue))
+#
+#   MapList[-1].UpdateMapStats(DistrictList)
+#   return(MapList)            
         
     return(DistrictList)
         
