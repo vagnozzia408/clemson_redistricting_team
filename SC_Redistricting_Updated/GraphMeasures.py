@@ -32,6 +32,25 @@ class District:
         
     def UpdateCMPStats(self, eg):
         self.EfficencyGap = eg
+    
+class Map:
+    ItNum = 0
+    AvgPPCompactScore = 0
+    EG = 0 
+    
+    def __init__(self, itNum):
+        self.ItNum = itNum
+    
+    def UpdateMapStats(self, DistrictList):
+        totalpp = 0
+        totaleg = 0
+        for dis in DistrictList:
+            totalpp += dis.ppCompactScore
+            totaleg += dis.EfficencyGap
+        self.AvgPPCompactScore = totalpp / len(DistrictList)
+        self.EG = totaleg / len(DistrictList)
+            
+        
         
 def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
@@ -126,6 +145,9 @@ def main(*args):
             zoneField = "Cluster_ID"
             arcprint("We are using default input choices for GraphMeasures.py")
 
+    MapList = []
+    itCount = 0
+    MapList.append(Map(itCount))
     # Run Compactness Scores the first time and list the list DistrictList
     inZoneData = shapefile # The major change for the in-iteration calculation is to only input a part of this table, dealing with dist1 and dist2.
     outTable = path + "\\DistrictZonalGeometry2"
