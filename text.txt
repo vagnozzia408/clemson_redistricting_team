@@ -1,4 +1,0 @@
-hello again - test of lfs credentials cache
-now testing stack exchange suggestion
-new test
-one more time
