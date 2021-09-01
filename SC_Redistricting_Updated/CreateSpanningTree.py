@@ -127,7 +127,7 @@ def FindEdgeCut(tree,tol,criteria):
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
-            #arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
+            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
@@ -244,6 +244,15 @@ def main(*args):
     
     if dist1==dist2:
         arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Creates an error if the two district choices are the same
+
+    #Creates a column named "temp_dist" and zeros it out
+    if not arcpy.ListFields(shapefile, "temp_dist"):
+        arcpy.AddField_management(shapefile, "temp_dist", "SHORT", field_alias="Temporary District")
+    if __name__ == "__main__":
+        with arcpy.da.UpdateCursor(shapefile, "temp_dist") as cursor:
+            for row in cursor: 
+                row[0] = 0
+                cursor.updateRow(row)
 
     fieldexist=False
     lstFields = arcpy.ListFields(neighbor_list)
@@ -382,6 +391,7 @@ def main(*args):
         
     [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
+    
     #This next section of code decides which subgraph should become district 1 and which should become district 2
     if dist1_pop!=float('inf') and dist2_pop!=float('inf'):
         s0d1count=0
@@ -417,6 +427,19 @@ def main(*args):
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
+            
+    arcprint("Updating temp_dist in CreateSpanningTree.py...")
+    with arcpy.da.UpdateCursor(shapefile, [sf_name_field,"temp_dist"]) as cursor:
+        for row in cursor: 
+            if row[0] in subgraphs[0]:
+                row[1] = 1
+            elif row[0] in subgraphs[1]:
+                row[1] = 2
+            elif row[0] not in subgraphs[0] and row[0] not in subgraphs[1]:
+                row[1] = 0
+            else:
+                arcerror2("{0} is not assigned a proper district...", row[0])
+            cursor.updateRow(row)
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
