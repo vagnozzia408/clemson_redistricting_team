@@ -338,40 +338,40 @@ def main(*args):
             DistrictList.append(District(row[1]))
             DistrictList[-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
     
-    MapList = []
-    itCount = 0
-    MapList.append(Map(itCount))   
-    
-    with arcpy.da.SearchCursor(path+"\\tl_2020_45_county20_MC1_2018Votes", ["Cluster_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
-        for row in cursor:
-            DistrictList[int(row[0]) - 1].VoteCountRed += int(row[2])
-            DistrictList[int(row[0]) - 1].VoteCountBlue += int(row[1])
-    
-    for dis in DistrictList:
-        if dis.VoteCountRed == dis.VoteCountBlue :
-            ran = np.random.randint(2)
-            if ran == 0:
-                dis.VoteCountRed += 1
-            else :
-                dis.VoteCountBlue += 1
-        #Calculate win threshold:
-        if dis.VoteCountRed + dis.VoteCountBlue % 2 == 0:
-            dis.WinThreshold = (0.5*(dis.VoteCountRed + dis.VoteCountBlue)) + 1
-        else :
-            dis.WinThreshold = math.ceil(0.5*(dis.VoteCountRed + dis.VoteCountBlue))
-        if dis.VoteCountRed > dis.VoteCountBlue:
-            dis.WastedRed = dis.VoteCountRed - dis.WinThreshold
-            dis.WastedBlue = dis.VoteCountBlue
-        else :
-            dis.WastedBlue = dis.VoteCountBlue - dis.WinThreshold
-            dis.WastedRed = dis.VoteCountRed
-        dis.BlueShare = dis.VoteCountBlue / (dis.VoteCountRed + dis.VoteCountBlue)
-        dis.UpdateCMPStats((dis.WastedBlue - dis.WastedRed)/(dis.VoteCountRed + dis.VoteCountBlue))
-        
-
-        
-    MapList[-1].UpdateMapStats(DistrictList)
-    return(MapList)            
+#    MapList = []
+#    itCount = 0
+#    MapList.append(Map(itCount))   
+#    
+#    with arcpy.da.SearchCursor(shapefile, ["Cluster_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
+#        for row in cursor:
+#            DistrictList[int(row[0]) - 1].VoteCountRed += int(row[2])
+#            DistrictList[int(row[0]) - 1].VoteCountBlue += int(row[1])
+#    
+#    for dis in DistrictList:
+#        if dis.VoteCountRed == dis.VoteCountBlue :
+#            ran = np.random.randint(2)
+#            if ran == 0:
+#                dis.VoteCountRed += 1
+#            else :
+#                dis.VoteCountBlue += 1
+#        #Calculate win threshold:
+#        if dis.VoteCountRed + dis.VoteCountBlue % 2 == 0:
+#            dis.WinThreshold = (0.5*(dis.VoteCountRed + dis.VoteCountBlue)) + 1
+#        else :
+#            dis.WinThreshold = math.ceil(0.5*(dis.VoteCountRed + dis.VoteCountBlue))
+#        if dis.VoteCountRed > dis.VoteCountBlue:
+#            dis.WastedRed = dis.VoteCountRed - dis.WinThreshold
+#            dis.WastedBlue = dis.VoteCountBlue
+#        else :
+#            dis.WastedBlue = dis.VoteCountBlue - dis.WinThreshold
+#            dis.WastedRed = dis.VoteCountRed
+#        dis.BlueShare = dis.VoteCountBlue / (dis.VoteCountRed + dis.VoteCountBlue)
+#        dis.UpdateCMPStats((dis.WastedBlue - dis.WastedRed)/(dis.VoteCountRed + dis.VoteCountBlue))
+#        
+#
+#        
+#    MapList[-1].UpdateMapStats(DistrictList)
+#    return(MapList)            
         
     return(DistrictList)
     
