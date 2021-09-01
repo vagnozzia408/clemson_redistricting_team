@@ -294,9 +294,8 @@ def arcprint(message,*variables):
         
 def main(*args):
     ### MAIN CODE STARTS HERE
-    global DistrictList
-    global MapList
-    global V_Points
+    #global DistrictList
+    #global MapList
     global runspot #Allows runspot to be changed inside a function
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
