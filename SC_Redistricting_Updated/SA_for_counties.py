@@ -273,6 +273,7 @@ def main(*args):
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
     metric_count = 2
+    #metric_count = 3
     alpha = metric_count*[0]
     for i in range(metric_count):
         alpha[i] = random.randint(1,1000)
@@ -371,6 +372,9 @@ def main(*args):
    # DistrictStats = [0]*(MaxIter+1)
     DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
+    #global MapStats
+    #MapStats = GraphMeasures.main(out_table, "CLUSTER_ID") ## We need to grab the second thing it returns, not DistrictList)
+    #fair = MapStats[0].PICKONE
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
     arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
@@ -380,11 +384,17 @@ def main(*args):
     arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
     arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
+    #arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats[0].MedianMean, MapStats[0].EG, MapStats[0].B_G)
+    
     deviation =[0]*(MaxIter+1)
     global avgcomp
-    avgcomp = [0]*(MaxIter+1)    
+    avgcomp = [0]*(MaxIter+1)  
+    #global FairScore
+    #fairscore = [0]*(MaxIter+1)
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
+    #fairscore[0] = fair
+    
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
     if not arcpy.ListFields(neighbor_list, "src_dist"): #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
@@ -445,20 +455,27 @@ def main(*args):
         DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2, out_table,path, DistrictStats)
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
+        #MapStats.append(GraphMeasures.Map(count))
+        #MapStats[-1].GraphMeasures.UpdateMapStats(DistrictStats)
+        
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count] - avgcomp[count-1]
+        #DeltaE_fair = fairscore[count] - fairscore[count -1]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
+        #arcprint("DeltaE_fair = {0}.", DeltaE_fair)
         
         prev_DeltaE[count % 5][0] = abs(DeltaE_dev)
         prev_DeltaE[count % 5][1] = abs(DeltaE_comp)
+        #prev_DeltaE[count % 5][2] = abs(DeltaE_fair)
         for i in range(metric_count):
             norm[i] = sum(prev_DeltaE[:,i])/len(prev_DeltaE[:,i])
         
-        #Calculates DeltaE based on each of the metrics
+        #Calculates DeltaE based on each of the metrics_
         DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
+        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         
