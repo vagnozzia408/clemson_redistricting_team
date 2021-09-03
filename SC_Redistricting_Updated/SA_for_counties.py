@@ -375,7 +375,7 @@ def main(*args):
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     #global MapStats
     #MapStats = GraphMeasures.main(out_table, "CLUSTER_ID")[1] ## We need to grab the second thing it returns, not DistrictList)
-    #fair = MapStats[0].PICKONE
+    #fair = MapStats[0].MedianMean
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
     arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
