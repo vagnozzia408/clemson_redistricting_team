@@ -372,11 +372,11 @@ def main(*args):
 #
 #        
         
-        
+#    MapList[-1].UpdateMapStats(DistrictList)      
     return(DistrictList)
     
-#    MapList[-1].UpdateMapStats(DistrictList)
-#    return(MapList)    
+
+#    #return(DistrictList, MapList)    
     
     # To update the DistrictList with hypothetical information, call the function:
     ##  PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList,zoneField)

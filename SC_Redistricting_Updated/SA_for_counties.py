@@ -371,9 +371,10 @@ def main(*args):
     global DistrictStats
    # DistrictStats = [0]*(MaxIter+1)
     DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
+    #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")[0]
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     #global MapStats
-    #MapStats = GraphMeasures.main(out_table, "CLUSTER_ID") ## We need to grab the second thing it returns, not DistrictList)
+    #MapStats = GraphMeasures.main(out_table, "CLUSTER_ID")[1] ## We need to grab the second thing it returns, not DistrictList)
     #fair = MapStats[0].PICKONE
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
@@ -455,6 +456,7 @@ def main(*args):
         DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2, out_table,path, DistrictStats)
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
+        #DistrictStats = GraphMeasures.CompetitionUpdate(dist1,dist2, DistrictStats)
         #MapStats.append(GraphMeasures.Map(count))
         #MapStats[-1].GraphMeasures.UpdateMapStats(DistrictStats)
         
