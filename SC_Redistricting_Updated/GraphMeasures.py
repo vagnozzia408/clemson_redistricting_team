@@ -53,6 +53,11 @@ class District:
         self.BlueShare = bs
         self.EfficiencyGap = eg
         self.WinThreshold = wt
+    
+    def UpdateCompStats(self, a, p, ppc):
+        self.Area = a
+        self.Perimeter = p
+        self.ppCompactScore = ppc
         
     def UpdateHypStats(self, a, p, ppc):
         self.HypArea = a
@@ -99,8 +104,8 @@ class Map:
     HypAvgStateWideVote = 0
     HypBlueSeatsWon = 0
     
-    def __init__(self):
-        self.ItNum = 0
+    def __init__(self, it):
+        self.ItNum = it
     
     def UpdateMapStats(self, wvr, wvb, trv, tbv, tv, eg, mm, bg, aswv, bsw):
         self.WastedVotesRed = wvr
@@ -244,7 +249,7 @@ class Map:
             
     def ConfirmMapStats(self, status):
         if status == True:
-            self.UpdateMapStats(self.HypWastedVotesRed, self.HypWastedVotesBlue, self.HypTotalRedVotes, self.HypTotalBlueVotes, self.HypTotalVote, self.HypEG, self.HypMedianMean, self.HypB_G, self.HypAvgStateWideVote, self.HypBlueSeatsWon)
+            self.UpdateMapStats(self.HypWastedVotesRed, self.HypWastedVotesBlue, self.HypTotalRedVotes, self.HypTotalBlueVotes, self.HypTotalVotes, self.HypEG, self.HypMedianMean, self.HypB_G, self.HypAvgStateWideVote, self.HypBlueSeatsWon)
         self.HypWastedVotesRed = 0
         self.HypWastedVotesBlue = 0
         self.HypTotalRedVotes = 0
@@ -345,8 +350,8 @@ def arcprint(message,*variables):
         
 def main(*args):
     ### MAIN CODE STARTS HERE
-    #global DistrictList
-    #global MapList
+    global DistrictList
+    global MapObject
     global runspot #Allows runspot to be changed inside a function
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
@@ -386,45 +391,46 @@ def main(*args):
     with arcpy.da.SearchCursor(outTable, "*", "*") as cursor:
         for row in cursor:
             DistrictList.append(District(row[1]))
-            DistrictList[-1].UpdateStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+            DistrictList[-1].UpdateCompStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
     
 
-#    MapObject = Map()  
-#    
-#    with arcpy.da.SearchCursor(shapefile, ["Cluster_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
-#        for row in cursor:
-#            DistrictList[int(row[0]) - 1].VoteCountRed += int(row[2])
-#            DistrictList[int(row[0]) - 1].VoteCountBlue += int(row[1])
-#    
-#    for dis in DistrictList:
-#        if dis.VoteCountRed == dis.VoteCountBlue :
-#            ran = np.random.randint(2)
-#            if ran == 0:
-#                dis.VoteCountRed += 1
-#            else :
-#                dis.VoteCountBlue += 1
-#        #Calculate win threshold:
-#        if dis.VoteCountRed + dis.VoteCountBlue % 2 == 0:
-#            dis.WinThreshold = (0.5*(dis.VoteCountRed + dis.VoteCountBlue)) + 1
-#        else :
-#            dis.WinThreshold = math.ceil(0.5*(dis.VoteCountRed + dis.VoteCountBlue))
-#        if dis.VoteCountRed > dis.VoteCountBlue:
-#            dis.WastedRed = dis.VoteCountRed - dis.WinThreshold
-#            dis.WastedBlue = dis.VoteCountBlue
-#        else :
-#            dis.WastedBlue = dis.VoteCountBlue - dis.WinThreshold
-#            dis.WastedRed = dis.VoteCountRed
-#        dis.BlueShare = dis.VoteCountBlue / (dis.VoteCountRed + dis.VoteCountBlue)
-#        dis.EfficiencyGap = (dis.WastedBlue - dis.WastedRed)/(dis.VoteCountRed + dis.VoteCountBlue)
-#        
-#
-#        
+    MapObject = Map(0)  
+    
+    with arcpy.da.SearchCursor(shapefile, ["Cluster_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
+        for row in cursor:
+            DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
+            DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])
+    
+    for dis in DistrictList:
+        if dis.HypVoteCountRed == dis.HypVoteCountBlue :
+            ran = np.random.randint(2)
+            if ran == 0:
+                dis.HypVoteCountRed += 1
+            else :
+                dis.HypVoteCountBlue += 1
+        #Calculate win threshold:
+        if dis.HypVoteCountRed + dis.HypVoteCountBlue % 2 == 0:
+            dis.HypWinThreshold = (0.5*(dis.HypVoteCountRed + dis.HypVoteCountBlue)) + 1
+        else :
+            dis.HypWinThreshold = math.ceil(0.5*(dis.HypVoteCountRed + dis.HypVoteCountBlue))
+        if dis.HypVoteCountRed > dis.HypVoteCountBlue:
+            dis.HypWastedRed = dis.HypVoteCountRed - dis.HypWinThreshold
+            dis.HypWastedBlue = dis.HypVoteCountBlue
+        else :
+            dis.HypWastedBlue = dis.HypVoteCountBlue - dis.HypWinThreshold
+            dis.HypWastedRed = dis.HypVoteCountRed
+        dis.HypBlueShare = dis.HypVoteCountBlue / (dis.HypVoteCountRed + dis.HypVoteCountBlue)
+        dis.HypEfficiencyGap = (dis.HypWastedBlue - dis.HypWastedRed)/(dis.HypVoteCountRed + dis.HypVoteCountBlue)
         
-#   MapObject.UpdateMapStats(DistrictList)      
-    return(DistrictList)
+        
+    MapObject.UpdateHypMapStats(DistrictList)
+    for i in range(len(DistrictList)):
+        DistrictList[i].ConfirmStats(True)
+    MapObject.ConfirmMapStats(True)
+    #return(DistrictList)
     
 
-#    #return(DistrictList, MapList)    
+    return(DistrictList, MapObject)    
     
    # To update DistrictList with hypothetical information:
    ## GraphMeasures.DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList)
