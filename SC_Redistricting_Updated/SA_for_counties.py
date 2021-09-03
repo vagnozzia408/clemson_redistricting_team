@@ -166,6 +166,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             cursor.updateRow(row)
     DistrictStats[dist1-1].ConfirmStats(True)
     DistrictStats[dist2-1].ConfirmStats(True)
+    #MapStats.ConfirmMapStats(True)
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
     arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
@@ -175,7 +176,10 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
     arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
+    #arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
+    
     return(T,sumpop,stateG,neighbor_list,DistrictStats)
+    #return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats)
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -369,13 +373,12 @@ def main(*args):
     idealpop=sum(sumpop)/distcount    
     
     global DistrictStats
+    #global MapStats
    # DistrictStats = [0]*(MaxIter+1)
     DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
-    #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")[0]
+    #[DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
-    #global MapStats
-    #MapStats = GraphMeasures.main(out_table, "CLUSTER_ID")[1] ## We need to grab the second thing it returns, not DistrictList)
-    #fair = MapStats[0].MedianMean
+    #fair = MapStats.MedianMean
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
     arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
@@ -385,7 +388,7 @@ def main(*args):
     arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
     arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
-    #arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats[0].MedianMean, MapStats[0].EG, MapStats[0].B_G)
+    #arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
     
     deviation =[0]*(MaxIter+1)
     global avgcomp
@@ -453,17 +456,15 @@ def main(*args):
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
         deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount)
-        DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2, out_table,path, DistrictStats)
+        DistrictStats = GraphMeasures.DistrictUpdateForHyp(dist1,dist2, out_table,path, DistrictStats)
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
-        #DistrictStats = GraphMeasures.CompetitionUpdate(dist1,dist2, DistrictStats)
-        #MapStats.append(GraphMeasures.Map(count))
-        #MapStats[-1].GraphMeasures.UpdateMapStats(DistrictStats)
+        #MapStats.UpdateHypMapStats(DistrictStats)
         
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
-        DeltaE_comp = avgcomp[count] - avgcomp[count-1]
+        DeltaE_comp = avgcomp[count-1] - avgcomp[count]
         #DeltaE_fair = fairscore[count] - fairscore[count -1]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
@@ -483,6 +484,7 @@ def main(*args):
         
         if DeltaE <0: #An improvement!
             [T,sumpop,stateG,neighbor_list,DistrictStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
+            #[T,sumpop,stateG,neighbor_list,DistrictStats, MapStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -494,6 +496,7 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 [T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
+                #[T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -501,6 +504,9 @@ def main(*args):
                 nx.set_node_attributes(stateG,prevdists,"District Number")
                 stopcounter+=1
                 arcprint("The change was rejected, since p < rand.")
+                #DistrictStats[dist1-1].ConfirmStats(False)
+                #DistrictStats[dist2-1].ConfirmStats(False)
+                #MapStats.ConfirmMapStats(False)
                 
         
         
@@ -512,6 +518,7 @@ def main(*args):
         arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
     arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
+    #arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",fairscore[0],fairscore[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
     
