@@ -253,25 +253,21 @@ def main(*args):
             for row in cursor: 
                 row[0] = 0
                 cursor.updateRow(row)
-
-    fieldexist=False
-    lstFields = arcpy.ListFields(neighbor_list)
-    for field in lstFields:
-        if field.name == "src_dist":
-            fieldexist=True
-            break
-    if fieldexist==False: #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
+    
+    #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
+    if not arcpy.ListFields(neighbor_list, "src_dist"):
         arcpy.AddField_management(neighbor_list, "src_dist", "SHORT", field_alias="Source District")
         arcpy.AddField_management(neighbor_list, "nbr_dist", "SHORT", field_alias="Neighbor District")
     lstFields = arcpy.ListFields(neighbor_list) #Updates lstFields
     orig_dist_names=[]
+    lstFields = arcpy.ListFields(neighbor_list)
     for field in lstFields:
         if field.name in ["src_CLUSTER_ID", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID"]:
             orig_dist_names.append(field.name) #Creats a list that has the original field names that describe the district the polygons are in
     odn=orig_dist_names #An alias
     
     #Resets the src_dist and nbr_dist columns if they are empty or if this script is run as a stand-alone
-    if fieldexist==False or __name__ == "__main__": 
+    if not arcpy.ListFields(neighbor_list, "src_dist") or __name__ == "__main__": 
         with arcpy.da.UpdateCursor(neighbor_list, [odn[0],odn[1],'src_dist', 'nbr_dist']) as cursor:
             for row in cursor:
                 row[2]=row[0] #src_dist = src_CLUSTER_ID

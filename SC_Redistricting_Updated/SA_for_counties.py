@@ -31,6 +31,7 @@ import CreateSpanningTree
 import FindBoundaryShapes
 import networkx as nx
 import GraphMeasures
+import numpy as np
 
 def Flip():
     '''THE FOLLOWING CODE IS ESSENTIALLY THE FLIP ALGORITHM
@@ -57,15 +58,15 @@ def Flip():
                 cursor.updateRow(row)   
         deviation[count] = DeviationFromIdealPop(sumpop,idealpop,distcount)
         #arcprint("absolute deviation is {0}",deviation[count])    
-        DeltaE = deviation[count] - deviation[count-1]
-        arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
-        if DeltaE <0:
+        DeltaE_dev = deviation[count] - deviation[count-1]
+        arcprint("DeltaE_dev = {0}. T = {1}",DeltaE_dev,T)
+        if DeltaE_dev <0:
             T = T*.997
             continue
         else :
             rand = random.uniform(0,1)
             try: 
-                p = 1/math.exp(DeltaE/T)
+                p = 1/math.exp(DeltaE_dev/T)
             except OverflowError:
                 p = 0
             arcprint("p = {0}. rand = {1}",p,rand)
@@ -134,6 +135,10 @@ def FindNamingFields(in_table):
             break
     return(namefields,distfields)
     
+#def ComputeHypComp(dist1, dist2, outDistrictStats):
+#    DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2,out_table, path, DistrictStats)
+#    return(DistrictStats)
+    
 #%%
     
 def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats):
@@ -159,7 +164,16 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             objid= row[0]
             row[1] = stateG.nodes[objid]["District Number"]
             cursor.updateRow(row)
-    DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2,out_table,path,DistrictStats,DistField)
+    DistrictStats[dist1-1].ConfirmStats(True)
+    DistrictStats[dist2-1].ConfirmStats(True)
+    
+    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
+    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
+    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
+    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
+    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
+    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
+    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
     return(T,sumpop,stateG,neighbor_list,DistrictStats)
         
@@ -248,12 +262,29 @@ def main(*args):
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
-            T = 2500000
-            coolingrate = 0.9975
+            T = 10
+            coolingrate = 0.999
             tol=30
             #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             maxstopcounter=100
             arcprint("We are using default input choices")
+    
+    
+    
+    #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
+    metric_count = 2
+    alpha = metric_count*[0]
+    for i in range(metric_count):
+        alpha[i] = random.randint(1,1000)
+    tot = sum(alpha)
+    for i in range(metric_count):
+        alpha[i] = alpha[i]/tot
+        
+    #Normalizing factor
+    global prev_DeltaE
+    prev_DeltaE = np.zeros([5,metric_count],dtype=float)
+    global norm
+    norm = [0]*metric_count
     
     #Counts number of rows in out_table      
     row_count = arcpy.GetCount_management(in_table).getOutput(0) #getOutput(0) returns the value at the first index position of a tool.
@@ -273,8 +304,9 @@ def main(*args):
 #            for row in cursor:
 #                if no_of_dists<row[0]:
 #                    no_of_dists=int(row[0])
-                    
-                    
+    
+    
+    
     #Trying to use Spatially Constrained Multivariate Clustering instead of BBZ
     if not arcpy.ListFields(in_table, "Test_val"): #if field does not exist
         arcpy.AddField_management(in_table, "Test_val","LONG",field_alias="Test_val")
@@ -290,11 +322,17 @@ def main(*args):
     #Adds populations as a column in out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
     
+    #Creates a column named "temp_dist" and zeros it out
+    if not arcpy.ListFields(out_table, "temp_dist"):
+        arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
+    with arcpy.da.UpdateCursor(out_table, "temp_dist") as cursor:
+        for row in cursor: 
+            row[0] = 0
+            cursor.updateRow(row)
+    
     FindBoundaryShapes.main(out_table)
     #global neighbor_list
     neighbor_list = out_table + "_nbr_list"
-#    locked = arcpy.TestSchemaLock(neighbor_list)
-#    arcprint("On line 248, Lock status was {0}",locked)
     
     #Returns DistField "Dist_Assgn" and creates the field if it's not already there
     DistField = AddDistField(out_table)
@@ -328,22 +366,32 @@ def main(*args):
             sumpop[i] = row[0] + sumpop[i]
     arcprint("The sum of polygon populations (i.e. sumpop) is {0}.",sumpop)
     idealpop=sum(sumpop)/distcount    
-    deviation =[0]*(MaxIter+1)        
+    
+    global DistrictStats
+   # DistrictStats = [0]*(MaxIter+1)
+    DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
+    comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
+    
+    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
+    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
+    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
+    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
+    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
+    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
+    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
+    
+    deviation =[0]*(MaxIter+1)
+    global avgcomp
+    avgcomp = [0]*(MaxIter+1)    
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
+    avgcomp[0] = sum(comp)/len(comp)
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
-    fieldexist=False
-    lstFields = arcpy.ListFields(neighbor_list)
-#    locked = arcpy.TestSchemaLock(neighbor_list)
-#    arcprint("On line 292, Lock status was {0}",locked)
-    for field in lstFields:
-        if field.name == "src_dist":
-            fieldexist=True
-            break
-    if fieldexist==False: #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
+    if not arcpy.ListFields(neighbor_list, "src_dist"): #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
         arcpy.AddField_management(neighbor_list, "src_dist", "SHORT", field_alias="Source District")
         arcpy.AddField_management(neighbor_list, "nbr_dist", "SHORT", field_alias="Neighbor District")
     orig_dist_names=[]
+    lstFields = arcpy.ListFields(neighbor_list)
     for field in lstFields:
         if field.name in ["src_CLUSTER_ID", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID"]:
             orig_dist_names.append(field.name)
@@ -355,8 +403,7 @@ def main(*args):
             row[3]=row[1] #nbr_dist = nrb_CLUSTER_ID
             cursor.updateRow(row)
     
-    global DistrictStats
-    DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
+
     
     hypsumpop=sumpop.copy()
     stateG = nx.Graph()
@@ -395,10 +442,26 @@ def main(*args):
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
         deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount)
+        DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2, out_table,path, DistrictStats)
+        hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
+        avgcomp[count] = sum(hypcomp)/len(hypcomp)
+        
         #arcprint("absolute deviation is {0}",deviation[count])    
-        DeltaE = deviation[count] - deviation[count-1]
-        arcprint("DeltaE = {0}. T = {1}",DeltaE,T)
-        arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
+        DeltaE_dev = deviation[count] - deviation[count-1]
+        DeltaE_comp = avgcomp[count] - avgcomp[count-1]
+        arcprint("DeltaE_dev = {0}.",DeltaE_dev)
+        arcprint("DeltaE_comp = {0}.",DeltaE_comp)
+        
+        prev_DeltaE[count % 5][0] = abs(DeltaE_dev)
+        prev_DeltaE[count % 5][1] = abs(DeltaE_comp)
+        for i in range(metric_count):
+            norm[i] = sum(prev_DeltaE[:,i])/len(prev_DeltaE[:,i])
+        
+        #Calculates DeltaE based on each of the metrics
+        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
+        arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
+        
+        
         if DeltaE <0: #An improvement!
             [T,sumpop,stateG,neighbor_list,DistrictStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
             stopcounter=0
@@ -429,7 +492,9 @@ def main(*args):
     if stopcounter ==maxstopcounter:
         arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
     arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
+    arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
     arcprint("The population of each district is {0}",sumpop)
+    arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
     
     #Repopulates stateG if it was emptied during a rejection step in the algorithm
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon

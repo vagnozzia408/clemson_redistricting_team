@@ -31,7 +31,7 @@ class District:
     Original = True
     HypArea = 0
     HypPerimeter = 0
-    HypeppCompactScore = 0
+    HypppCompactScore = 0
     
     def __init__(self, ID):
         self.ID = ID
@@ -44,7 +44,7 @@ class District:
     def UpdateHypStats(self, a, p, ppc):
         self.HypArea = a
         self.HypPerimeter = p
-        self.HypppCompactScore = pp
+        self.HypppCompactScore = ppc
     
     def ConfirmStats(self, status):
         if status == True:
@@ -205,10 +205,10 @@ class Map:
             #print("Under the MPS assumption, B_G = " + str(BG_MPS) + " or " + str(round(BG_MPS*100,2)) + "%")
             
         
-def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList,zoneField):
+def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
     inZoneData = shapefile
-    #zoneField = "Cluster_ID"
+    zoneField = "temp_dist"
     outTable = path + "\\TempDistrictZonalGeometry"
     #cellSize = 1.28781240014216E-02
     arcpy.CheckOutExtension("Spatial")
@@ -219,7 +219,9 @@ def PolsbyPopperUpdate(dist1, dist2,shapefile, path, DistrictList,zoneField):
                 DistrictList[dist1-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
             elif row[1] == 2:
                 DistrictList[dist2-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
-                
+    for i in range(len(DistrictList)):
+        if i != dist1 - 1 and i != dist2 -1:
+            DistrictList[i].UpdateHypStats(DistrictList[i].Area, DistrictList[i].Perimeter, DistrictList[i].ppCompactScore)
     return DistrictList
 
 
