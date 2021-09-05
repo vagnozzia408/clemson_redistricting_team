@@ -21,4 +21,4 @@ def SequentialNumber():
         rec = pStart
     else:
         rec = rec + pInterval
-    return rec" Text NO_ENFORCE_DOMAINS</Process></lineage></DataProperties></Esri></metadata>
+    return rec" Text NO_ENFORCE_DOMAINS</Process><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\JoinField" Date="20210905" Time="170001">JoinField Statewide_2020_updated PSN '2020_precinct_data_preliminary$' PSN County1;Reg_Voters;PresBlue;PresRed;PresOther;SenBlue;SenRed;SenOther</Process></lineage></DataProperties></Esri></metadata>
