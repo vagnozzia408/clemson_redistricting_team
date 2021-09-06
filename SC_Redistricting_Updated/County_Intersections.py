@@ -9,6 +9,19 @@ import arcpy,math,os,sys
 import numpy as np
 import random
 
+
+def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field):
+    hyp_count = cur_count - np.count_nonzero(Matrix[dist1-1]) - np.count_nonzero(Matrix[dist2-1])
+    Temp_Matrix = np.zeros([2,46], dtype=int)
+    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,dist1,in_dist_field,dist2)) as cursor:
+        for row in cursor:
+            if row[0]==dist1:
+                Temp_Matrix[0][int((int(row[1])-1)/2)] +=1
+            if row[0]==dist2:
+                Temp_Matrix[1][int((int(row[1])-1)/2)] +=1
+    hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
+    return(hyp_count, Temp_Matrix) 
+
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
