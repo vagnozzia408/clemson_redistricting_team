@@ -21,7 +21,8 @@ Created on Thu Apr 15 16:52:28 2021
 #10. Make this code create its own neighbor list
 #11. Consider appending population field and custom naming field to out_table
 #12. Add timers to time sections of code
-#13. Reconsider starting temperatures so that 
+#13. Reconsider starting temperatures
+#14. Make code modular enough to change input metrics
 
 import arcpy,math,os,sys
 import random
@@ -141,7 +142,7 @@ def FindNamingFields(in_table):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -199,6 +200,7 @@ def arcerror(message,*variables):
     '''Prints an error message using arcpy.AddError() unless it can't; then it uses print. '''
     if runspot == "ArcGIS":
         arcpy.AddError(message.format(*variables))
+    elif runspot == "console":
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
@@ -255,19 +257,19 @@ def main(*args):
             #neighbor_list = args[8]
             maxstopcounter = args[9]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-            in_pop_field = "SUM_Popula"
-            in_name_field = "OBJECTID"
-#            in_table = path + "\\Precincts_2020"
-#            in_pop_field = "Precinct_P"
-#            in_name_field = "OBJECTID_1"
+#            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+#            in_pop_field = "SUM_Popula"
+#            in_name_field = "OBJECTID"
+            in_table = path + "\\Precincts_2020"
+            in_pop_field = "Precinct_P"
+            in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=100
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
             T = 10
-            coolingrate = 0.999
+            coolingrate = 0.9975
             tol=30
             #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             maxstopcounter=100
@@ -327,6 +329,10 @@ def main(*args):
     #Adds populations as a column in out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
     
+    #Adds vote totals as a column in out_table
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Blue")
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Red")
+    
     #Creates a column named "temp_dist" and zeros it out
     if not arcpy.ListFields(out_table, "temp_dist"):
         arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
@@ -373,8 +379,8 @@ def main(*args):
     idealpop=sum(sumpop)/distcount    
     
     global DistrictStats
-    #global MapStats
-   # DistrictStats = [0]*(MaxIter+1)
+    global MapStats
+    global fair
     #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
@@ -393,11 +399,13 @@ def main(*args):
     deviation =[0]*(MaxIter+1)
     global avgcomp
     avgcomp = [0]*(MaxIter+1)  
-    global FairScore
+    global fairscore
     fairscore = [0]*(MaxIter+1)
+    r_fairscore = [0]*(MaxIter+1)
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
-    fairscore[0] = fair
+    fairscore[0] = abs(fair)
+    r_fairscore[0] = fair
     
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
@@ -460,12 +468,14 @@ def main(*args):
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
         MapStats.UpdateHypMapStats(DistrictStats)
+        fairscore[count] = abs(MapStats.HypMedianMean)
+        r_fairscore[count] = MapStats.HypMedianMean
         
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count-1] - avgcomp[count]
-        DeltaE_fair = fairscore[count] - fairscore[count -1]
+        DeltaE_fair = fairscore[count] - fairscore[count-1]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
         arcprint("DeltaE_fair = {0}.", DeltaE_fair)
@@ -493,10 +503,12 @@ def main(*args):
                 p = 1/math.exp(DeltaE/T) #p = probability that the worsening is accepted
             except OverflowError:
                 p = 0 #If denominator in calculation above is large enough, an OverflowError will occur
+            if math.isnan(p):
+                arcerror("p was nan")
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                [T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-                #[T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats)
+                #[T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -518,7 +530,7 @@ def main(*args):
         arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
     arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
-    arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",fairscore[0],fairscore[count])
+    arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",r_fairscore[0],r_fairscore[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
     

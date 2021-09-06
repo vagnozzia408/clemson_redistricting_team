@@ -154,98 +154,98 @@ class Map:
             
             MED = statistics.median(Ashares.values())
             MM=MED-V
-            self.MedianMean = MM
+            self.HypMedianMean = MM
             #print("MM = " + str(MM))
-            
-            #print(District_Efficiency_Gaps)
-            # Take the average district-wide efficiency gap to see who wastes more votes on average per district
-            EG = statistics.mean(District_Efficiency_Gaps.values())
-            self.EG = EG
-            #print(EG)
-            
-            # New Statewide Proportions
-            new_Vs = []
-            new_Vs.append(V)
-            
-            # For each observed proportion of Democratic votes in a district...
-            for d in Ashares.keys():
-                # If a Republican occupies the seat:
-                if Ashares[d] < 0.5:
-                    # The seat will be lost if the statewide vote falls to new_V:
-                    new_V = 1 - (1-V)/(2*(1-Ashares[d]))
-                # If a Democrat occupies the seat:
-                elif Ashares[d] > 0.5:
-                    new_V = V / (2*Ashares[d])
-                else: #if Ashares[d] = 0.5
-                    raise KeyError("District Democratic Vote Proportion exactly equal to 0.5?")
-                
-                new_Vs.append(new_V)
-                
-            MPS_SV = []
-            new_Vs = sorted(new_Vs)
-            for i in range(len(new_Vs)):
-                MPS_SV.append((new_Vs[i],i/(len(new_Vs)-1)))
-                
-            # print MPS_SV
-            
-            MPS_SVI = []
-            for point in MPS_SV:
-                MPS_SVI.append((1-point[0],1-point[1]))
-            MPS_SVI = sorted(MPS_SVI)
-            
-            # print MPS_SVI
-            
-            # Find intersection points.
-            int_pts2 = []
-            for i in range(len(MPS_SV)-1):
-                # If we find where two line segments intersect...
-                if (MPS_SV[i][0] < MPS_SVI[i][0] and MPS_SV[i+1][0] > MPS_SVI[i+1][0]) or (MPS_SV[i][0] > MPS_SVI[i][0] and MPS_SV[i+1][0] < MPS_SVI[i+1][0]):
-                    # Find Seats-Votes line segment.
-                    m1 = (MPS_SV[i+1][1]-MPS_SV[i][1]) / (MPS_SV[i+1][0]-MPS_SV[i][0])
-                    b1 = MPS_SV[i][1] - m1 * MPS_SV[i][0]
-                    
-                    # Find Inverted Seats-Votes line segment.
-                    m2 = (MPS_SVI[i+1][1]-MPS_SVI[i][1]) / (MPS_SVI[i+1][0]-MPS_SVI[i][0])
-                    b2 = MPS_SVI[i][1] - m2 * MPS_SVI[i][0]
-                    
-                    # Find the intersection point.
-                    x = (b2-b1)/(m1-m2)
-                    y = m1 * x + b1
-                    
-                    int_pts2.append((x,y))
-                    
-            # print int_pts2
-            
-            # Append intersection points to SV and SVI points, then sort.
-            for pt in int_pts2:
-                MPS_SV.append(pt)
-                MPS_SVI.append(pt)
-            MPS_SV = sorted(MPS_SV)
-            MPS_SVI = sorted(MPS_SVI)
-            
-            # Calculate total area under the SV and Inverse SV curves.
-            BG_MPS = 0
-            
-            # 'Integrate' with respect to y
-            xmax2 = max(MPS_SV[-1][0], MPS_SVI[-1][0])
-            
-            for i in range(len(MPS_SV)-1):
-                # Area under Seats-Votes curve
-                b1 = xmax2 - MPS_SV[i][0]
-                b2 = xmax2 - MPS_SV[i+1][0]
-                h = MPS_SV[i+1][1] - MPS_SV[i][1]
-                area1 = 0.5 * (b1 + b2) * h
-                
-                # Area under Inverted Seats-Votes curve
-                ib1 = xmax2 - MPS_SVI[i][0]
-                ib2 = xmax2 - MPS_SVI[i+1][0]
-                ih = MPS_SVI[i+1][1] - MPS_SVI[i][1]
-                area2 = 0.5 * (ib1 + ib2) * ih
-                
-                BG_MPS += abs(area2 - area1)
-                
-            self.HypB_G = BG_MPS            
-            #print("Under the MPS assumption, B_G = " + str(BG_MPS) + " or " + str(round(BG_MPS*100,2)) + "%")
+#            
+#            #print(District_Efficiency_Gaps)
+#            # Take the average district-wide efficiency gap to see who wastes more votes on average per district
+#            EG = statistics.mean(District_Efficiency_Gaps.values())
+#            self.HypEG = EG
+#            #print(EG)
+#            
+#            # New Statewide Proportions
+#            new_Vs = []
+#            new_Vs.append(V)
+#            
+#            # For each observed proportion of Democratic votes in a district...
+#            for d in Ashares.keys():
+#                # If a Republican occupies the seat:
+#                if Ashares[d] < 0.5:
+#                    # The seat will be lost if the statewide vote falls to new_V:
+#                    new_V = 1 - (1-V)/(2*(1-Ashares[d]))
+#                # If a Democrat occupies the seat:
+#                elif Ashares[d] > 0.5:
+#                    new_V = V / (2*Ashares[d])
+#                else: #if Ashares[d] = 0.5
+#                    raise KeyError("District Democratic Vote Proportion exactly equal to 0.5?")
+#                
+#                new_Vs.append(new_V)
+#                
+#            MPS_SV = []
+#            new_Vs = sorted(new_Vs)
+#            for i in range(len(new_Vs)):
+#                MPS_SV.append((new_Vs[i],i/(len(new_Vs)-1)))
+#                
+#            # print MPS_SV
+#            
+#            MPS_SVI = []
+#            for point in MPS_SV:
+#                MPS_SVI.append((1-point[0],1-point[1]))
+#            MPS_SVI = sorted(MPS_SVI)
+#            
+#            # print MPS_SVI
+#            
+#            # Find intersection points.
+#            int_pts2 = []
+#            for i in range(len(MPS_SV)-1):
+#                # If we find where two line segments intersect...
+#                if (MPS_SV[i][0] < MPS_SVI[i][0] and MPS_SV[i+1][0] > MPS_SVI[i+1][0]) or (MPS_SV[i][0] > MPS_SVI[i][0] and MPS_SV[i+1][0] < MPS_SVI[i+1][0]):
+#                    # Find Seats-Votes line segment.
+#                    m1 = (MPS_SV[i+1][1]-MPS_SV[i][1]) / (MPS_SV[i+1][0]-MPS_SV[i][0])
+#                    b1 = MPS_SV[i][1] - m1 * MPS_SV[i][0]
+#                    
+#                    # Find Inverted Seats-Votes line segment.
+#                    m2 = (MPS_SVI[i+1][1]-MPS_SVI[i][1]) / (MPS_SVI[i+1][0]-MPS_SVI[i][0])
+#                    b2 = MPS_SVI[i][1] - m2 * MPS_SVI[i][0]
+#                    
+#                    # Find the intersection point.
+#                    x = (b2-b1)/(m1-m2)
+#                    y = m1 * x + b1
+#                    
+#                    int_pts2.append((x,y))
+#                    
+#            # print int_pts2
+#            
+#            # Append intersection points to SV and SVI points, then sort.
+#            for pt in int_pts2:
+#                MPS_SV.append(pt)
+#                MPS_SVI.append(pt)
+#            MPS_SV = sorted(MPS_SV)
+#            MPS_SVI = sorted(MPS_SVI)
+#            
+#            # Calculate total area under the SV and Inverse SV curves.
+#            BG_MPS = 0
+#            
+#            # 'Integrate' with respect to y
+#            xmax2 = max(MPS_SV[-1][0], MPS_SVI[-1][0])
+#            
+#            for i in range(len(MPS_SV)-1):
+#                # Area under Seats-Votes curve
+#                b1 = xmax2 - MPS_SV[i][0]
+#                b2 = xmax2 - MPS_SV[i+1][0]
+#                h = MPS_SV[i+1][1] - MPS_SV[i][1]
+#                area1 = 0.5 * (b1 + b2) * h
+#                
+#                # Area under Inverted Seats-Votes curve
+#                ib1 = xmax2 - MPS_SVI[i][0]
+#                ib2 = xmax2 - MPS_SVI[i+1][0]
+#                ih = MPS_SVI[i+1][1] - MPS_SVI[i][1]
+#                area2 = 0.5 * (ib1 + ib2) * ih
+#                
+#                BG_MPS += abs(area2 - area1)
+#                
+#            self.HypB_G = BG_MPS            
+#            #print("Under the MPS assumption, B_G = " + str(BG_MPS) + " or " + str(round(BG_MPS*100,2)) + "%")
             
     def ConfirmMapStats(self, status):
         if status == True:
@@ -278,7 +278,7 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList):
     for i in range(len(DistrictList)):
         if i != dist1 - 1 and i != dist2 -1:
             DistrictList[i].UpdateHypStats(DistrictList[i].Area, DistrictList[i].Perimeter, DistrictList[i].ppCompactScore)
-    return DistrictList
+    #return DistrictList
 
     #DistrictList[dist1 - 1].HypVoteCountRed = 0
     #DistrictList[dist1 - 1].HypVoteCountBlue = 0
@@ -391,12 +391,12 @@ def main(*args):
     with arcpy.da.SearchCursor(outTable, "*", "*") as cursor:
         for row in cursor:
             DistrictList.append(District(row[1]))
-            DistrictList[-1].UpdateCompStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+            DistrictList[-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
     
 
     MapObject = Map(0)  
     
-    with arcpy.da.SearchCursor(shapefile, ["Cluster_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["CLUSTER_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
         for row in cursor:
             DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
             DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])
