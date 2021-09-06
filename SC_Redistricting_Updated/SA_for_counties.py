@@ -32,6 +32,7 @@ import CreateSpanningTree
 import FindBoundaryShapes
 import networkx as nx
 import GraphMeasures
+import County_Intersections
 import numpy as np
 
 def Flip():
@@ -279,7 +280,7 @@ def main(*args):
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
     #metric_count = 2
-    metric_count = 3
+    metric_count = 4
     alpha = metric_count*[0]
     for i in range(metric_count):
         alpha[i] = random.randint(1,1000)
@@ -325,13 +326,15 @@ def main(*args):
     arcprint("Running Spatially Constrained Multivariate Clustering...")
     arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
     
-    
     #Adds populations as a column in out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
     
     #Adds vote totals as a column in out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Blue")
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Red")
+    
+    #Adds county numbers to out_table
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "County")
     
     #Creates a column named "temp_dist" and zeros it out
     if not arcpy.ListFields(out_table, "temp_dist"):
@@ -381,10 +384,13 @@ def main(*args):
     global DistrictStats
     global MapStats
     global fair
+    global CDI_Count
+    global units_in_CDI
     #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     fair = MapStats.MedianMean
+    [units_in_CDI,CDI_Count] = County_Intersections.main(out_table,distcount, DistField)
     
     arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
     arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
@@ -396,16 +402,22 @@ def main(*args):
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
     
+    arcprint("CDI_Count = {0}", CDI_Count)
+    
     deviation =[0]*(MaxIter+1)
     global avgcomp
     avgcomp = [0]*(MaxIter+1)  
     global fairscore
     fairscore = [0]*(MaxIter+1)
     r_fairscore = [0]*(MaxIter+1)
+    CDI_Count_vals = [0]*(MaxIter+1)
+    
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
     fairscore[0] = abs(fair)
     r_fairscore[0] = fair
+    CDI_Count_vals[0] = CDI_Count
+    
     
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
@@ -461,34 +473,44 @@ def main(*args):
             count-=1
             stopcounter+=1
             continue
+        
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
         deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount)
+        
         DistrictStats = GraphMeasures.DistrictUpdateForHyp(dist1,dist2, out_table,path, DistrictStats)
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
+        
         MapStats.UpdateHypMapStats(DistrictStats)
         fairscore[count] = abs(MapStats.HypMedianMean)
         r_fairscore[count] = MapStats.HypMedianMean
+        
+        [units_in_CDI, CDI_Count] = County_Intersections.main(out_table, distcount, DistField)
+        CDI_Count_vals[count] = CDI_Count
         
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count-1] - avgcomp[count]
         DeltaE_fair = fairscore[count] - fairscore[count-1]
+        DeltaE_county = CDI_Count_vals[count] - CDI_Count_vals[count-1]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
         arcprint("DeltaE_fair = {0}.", DeltaE_fair)
+        arcprint("DeltaE_county = {0}.", DeltaE_county)
         
         prev_DeltaE[count % 5][0] = abs(DeltaE_dev)
         prev_DeltaE[count % 5][1] = abs(DeltaE_comp)
         prev_DeltaE[count % 5][2] = abs(DeltaE_fair)
+        prev_DeltaE[count % 5][3] = abs(DeltaE_county)
         for i in range(metric_count):
             norm[i] = sum(prev_DeltaE[:,i])/len(prev_DeltaE[:,i])
         
         #Calculates DeltaE based on each of the metrics_
         #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
-        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
+        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
+        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         
