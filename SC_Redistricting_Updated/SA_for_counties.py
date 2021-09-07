@@ -181,7 +181,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
     arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
-    arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
+    arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
@@ -292,6 +292,10 @@ def main(*args):
     tot = sum(alpha)
     for i in range(metric_count):
         alpha[i] = alpha[i]/tot
+#    alpha[0] = 1
+#    alpha[1] = 0
+#    alpha[2] = 0
+#    alpha[3] = 0
     arcprint("alpha = {0}",alpha)
         
     #Normalizing factor
@@ -306,6 +310,7 @@ def main(*args):
     
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
     out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
+    #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_Senate_1000"
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 #    no_of_dists=0
 #    while no_of_dists!=distcount:
@@ -408,7 +413,7 @@ def main(*args):
 #    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
 #    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
-    arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
+    arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     
     arcprint("CDI_Count = {0}", CDI_Count)
     
