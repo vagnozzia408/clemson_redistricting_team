@@ -274,7 +274,8 @@ def main(*args):
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
             T = 10
-            coolingrate = 0.9975
+            FinalT = 0.05
+            coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
             #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             maxstopcounter=100
@@ -291,6 +292,7 @@ def main(*args):
     tot = sum(alpha)
     for i in range(metric_count):
         alpha[i] = alpha[i]/tot
+    arcprint("alpha = {0}",alpha)
         
     #Normalizing factor
     global prev_DeltaE
@@ -398,13 +400,13 @@ def main(*args):
     [units_in_CDI,CDI_Count] = County_Intersections.main(out_table,distcount, DistField)
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
-    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
-    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
-    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
-    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
-    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
-    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
-    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
+#    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
+#    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
+#    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
+#    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
+#    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
+#    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
+#    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
     
@@ -554,7 +556,7 @@ def main(*args):
                 
         
         
-    if T<=0.1:
+    if T<=0.01:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)
     if count >=MaxIter:
         arcprint("\nMaximum number of iterations reached. count = {0} and MaxIter = {1}", count, MaxIter)
@@ -566,6 +568,7 @@ def main(*args):
     arcprint("Original CDI_Count Score = {0}. Final CDI_Count Score = {1}",CDI_Count_vals[0],CDI_Count_vals[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
+    arcprint("The relative value assigned to the metrics was: Pop: {0}, Compactness: {1}, MM: {2}, Counties: {3}", alpha[0],alpha[1],alpha[2],alpha[3])
     
     #Repopulates stateG if it was emptied during a rejection step in the algorithm
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon

@@ -127,7 +127,7 @@ def FindEdgeCut(tree,tol,criteria):
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
-            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
+            #arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found.\n")
