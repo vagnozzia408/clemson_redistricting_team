@@ -367,7 +367,7 @@ def main(*args):
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     arcpy.env.workspace=path
     arcpy.env.overwriteOutput=True
-    arcpy.env.qualifiedFieldNames = False #Needed for AddJoin in ArcPy
+    arcpy.env.qualifiedFieldNames = False #Needed for AddJoin in Arcpy
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         shapefile=sys.argv[1]

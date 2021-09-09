@@ -285,14 +285,14 @@ def main(*args):
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
     #metric_count = 2
-    metric_count = 4
+    metric_count = 5
     alpha = metric_count*[0]
 #    for i in range(metric_count):
 #        alpha[i] = random.randint(1,1000)
 #    tot = sum(alpha)
 #    for i in range(metric_count):
 #        alpha[i] = alpha[i]/tot
-    alpha = [1/3, 1/3, 0, 1/3]
+    alpha = [1/4, 1/4, 0, 1/4, 1/4]
 #    alpha[0] = 1
 #    alpha[1] = 0
 #    alpha[2] = 0
@@ -368,7 +368,7 @@ def main(*args):
         for row in cursor:
             row[0] = row[1]
             cursor.updateRow(row)
-      
+    
 
     
 #    #Finds field name for population
@@ -397,13 +397,14 @@ def main(*args):
     global MapStats
     global fair
     global CDI_Count
+    global CDI_Square
     global units_in_CDI
     global temp_units_in_CDI
     #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     fair = MapStats.MedianMean
-    [units_in_CDI,CDI_Count] = County_Intersections.main(out_table,distcount, DistField)
+    [units_in_CDI,CDI_Count,CDI_Square] = County_Intersections.main(out_table,distcount, DistField)
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
 #    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
@@ -417,6 +418,7 @@ def main(*args):
     arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     
     arcprint("CDI_Count = {0}", CDI_Count)
+    arcprint("CDI_Square = {0}", CDI_Square)
     
     deviation =[0]*(MaxIter+1)
     global avgcomp
@@ -426,6 +428,8 @@ def main(*args):
     r_fairscore = [0]*(MaxIter+1)
     global CDI_Count_vals
     CDI_Count_vals = [0]*(MaxIter+1)
+    global CDI_Square_vals
+    CDI_Square_vals = [0]*(MaxIter+1)
     
     
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
@@ -433,6 +437,7 @@ def main(*args):
     fairscore[0] = abs(fair)
     r_fairscore[0] = fair
     CDI_Count_vals[0] = CDI_Count
+    CDI_Square_vals[0] = CDI_Square
     
     
     
@@ -504,23 +509,27 @@ def main(*args):
         
         #[units_in_CDI, CDI_Count] = County_Intersections.main(out_table, distcount, DistField)
         #CDI_Count_vals[count] = CDI_Count
-        [CDI_Count, temp_units_in_CDI] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, DistField)
+        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, DistField, CDI_Square_vals[count-1])
         CDI_Count_vals[count] = CDI_Count
+        CDI_Square_vals[count] = CDI_Square
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count-1] - avgcomp[count]
         DeltaE_fair = fairscore[count] - fairscore[count-1]
         DeltaE_county = CDI_Count_vals[count] - CDI_Count_vals[count-1]
+        DeltaE_square = CDI_Square_vals[count-1] - CDI_Square_vals[count]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
         arcprint("DeltaE_fair = {0}.", DeltaE_fair)
         arcprint("DeltaE_county = {0}.", DeltaE_county)
+        arcprint("DeltaE_square = {0}.", DeltaE_square)
         
         prev_DeltaE[count % 5][0] = abs(DeltaE_dev)
         prev_DeltaE[count % 5][1] = abs(DeltaE_comp)
         prev_DeltaE[count % 5][2] = abs(DeltaE_fair)
         prev_DeltaE[count % 5][3] = abs(DeltaE_county)
+        prev_DeltaE[count % 5][4] = abs(DeltaE_square)
         for i in range(metric_count):
             norm[i] = sum(prev_DeltaE[:,i])/len(prev_DeltaE[:,i])
             if norm[i] == 0:
@@ -528,7 +537,8 @@ def main(*args):
         #Calculates DeltaE based on each of the metrics_
         #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
         #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
-        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
+#        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
+        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_square*alpha[4]/norm[4]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         
@@ -572,6 +582,7 @@ def main(*args):
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
     arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",r_fairscore[0],r_fairscore[count])
     arcprint("Original CDI_Count Score = {0}. Final CDI_Count Score = {1}",CDI_Count_vals[0],CDI_Count_vals[count])
+    arcprint("Original CDI_Square Score = {0}. Final CDI_Square Score = {1}",CDI_Square_vals[0],CDI_Square_vals[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
     arcprint("The relative value assigned to the metrics was: Pop: {0}, Compactness: {1}, MM: {2}, Counties: {3}", alpha[0],alpha[1],alpha[2],alpha[3])

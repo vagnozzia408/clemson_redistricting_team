@@ -10,8 +10,9 @@ import numpy as np
 import random
 
 
-def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field):
+def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field, cur_square):
     hyp_count = cur_count - np.count_nonzero(Matrix[dist1-1]) - np.count_nonzero(Matrix[dist2-1])
+    hyp_square = cur_square - np.sum(np.square(Matrix[dist1-1])) - np.sum(np.square(Matrix[dist2-1]))
     Temp_Matrix = np.zeros([2,46], dtype=int)
     with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,dist1,in_dist_field,dist2)) as cursor:
         for row in cursor:
@@ -20,7 +21,8 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field)
             if row[0]==dist2:
                 Temp_Matrix[1][int((int(row[1])-1)/2)] +=1
     hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
-    return(hyp_count, Temp_Matrix) 
+    hyp_square += np.sum(np.square(Temp_Matrix[0])) + np.sum(np.square(Temp_Matrix[1]))
+    return(hyp_count, Temp_Matrix,hyp_square) 
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -80,16 +82,17 @@ def main(*args):
             in_dist_field = args[2]
         except IndexError: #Finally, manually assigns input values if they aren't provided
             in_table = path + "\\Precincts_2020"
-            distcount = 46
+            distcount = 7
             in_dist_field = "Dist_Assgn"
             arcprint("We are using default input choices")
     
-#    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
-#        for row in cursor:
-#            row[0] = random.randint(0,46)
-#            cursor.updateRow(row)
+    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
+        for row in cursor:
+            row[0] = random.randint(0,7)
+            cursor.updateRow(row)
     
     #CDI = County-District-Intersection
+    global units_in_CDI
     units_in_CDI = np.zeros([distcount,46], dtype=int)
     
     with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
@@ -99,7 +102,10 @@ def main(*args):
     CDI_Count = np.count_nonzero(units_in_CDI)
     arcprint("CDI_Count = {0}",CDI_Count)
     
-    return(units_in_CDI,CDI_Count)
+    #Squares each entry of the matrix and adds them all together
+    CDI_Square = np.sum(np.square(units_in_CDI))
+    
+    return(units_in_CDI,CDI_Count,CDI_Square)
     
 #END FUNCTIONS    
 if __name__ == "__main__":

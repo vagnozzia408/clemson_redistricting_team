@@ -243,7 +243,7 @@ def main(*args):
         stateG = nx.Graph() #Creates an empty graph that will contain all adjacencies for the state
     
     if dist1==dist2:
-        arcerror("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Creates an error if the two district choices are the same
+        arcerror2("The districts must be different. Currently, dist1={0} and dist2={1}.",dist1,dist2) #Creates an error if the two district choices are the same
 
     #Creates a column named "temp_dist" and zeros it out
     if not arcpy.ListFields(shapefile, "temp_dist"):

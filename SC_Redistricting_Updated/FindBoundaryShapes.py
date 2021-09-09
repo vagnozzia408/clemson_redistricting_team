@@ -176,11 +176,6 @@ def main(*args):
             if boundaryflag ==1:
                 in_row[1]=1
             in_cursor.updateRow(in_row)
-#        locked = arcpy.TestSchemaLock(neighbor_list)
-#        arcprint("On line 180, Lock status was {0}",locked)
-    
-    
-    #localvars = inspect.currentframe().f_locals
     
 #    if __name__ != "__main__":
 #        return(neighbor_list)
