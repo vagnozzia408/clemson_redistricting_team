@@ -26,8 +26,8 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-seed = 1743
-random.seed(seed)
+#seed = 1743
+#random.seed(seed)
 import CreateSpanningTree
 import FindBoundaryShapes
 import networkx as nx
@@ -173,13 +173,13 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     units_in_CDI[dist1-1] = temp_units_in_CDI[0]
     units_in_CDI[dist2-1] = temp_units_in_CDI[1]
     
-    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
-    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
-    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
-    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
-    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
-    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
-    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
+#    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
+#    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
+#    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
+#    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
+#    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
+#    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
+#    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}, EfficiencyGap = {1}, B_G = {2}", MapStats.MedianMean, MapStats.EG, MapStats.B_G)
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
@@ -268,7 +268,7 @@ def main(*args):
             in_table = path + "\\Precincts_2020"
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
-            distcount=7
+            distcount=46
             MaxIter=100
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
@@ -287,11 +287,12 @@ def main(*args):
     #metric_count = 2
     metric_count = 4
     alpha = metric_count*[0]
-    for i in range(metric_count):
-        alpha[i] = random.randint(1,1000)
-    tot = sum(alpha)
-    for i in range(metric_count):
-        alpha[i] = alpha[i]/tot
+#    for i in range(metric_count):
+#        alpha[i] = random.randint(1,1000)
+#    tot = sum(alpha)
+#    for i in range(metric_count):
+#        alpha[i] = alpha[i]/tot
+    alpha = [1/3, 1/3, 0, 1/3]
     arcprint("alpha = {0}",alpha)
         
     #Normalizing factor
