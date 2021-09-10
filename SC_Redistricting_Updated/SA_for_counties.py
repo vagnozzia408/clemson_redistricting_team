@@ -34,6 +34,8 @@ import networkx as nx
 import GraphMeasures
 import County_Intersections
 import numpy as np
+import datetime
+
 
 def Flip():
     '''THE FOLLOWING CODE IS ESSENTIALLY THE FLIP ALGORITHM
@@ -173,6 +175,10 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     units_in_CDI[dist1-1] = temp_units_in_CDI[0]
     units_in_CDI[dist2-1] = temp_units_in_CDI[1]
     
+    temp_units_in_CDI = np.zeros([2,46], dtype=int)
+    
+    arcprint("Total number of precints = {0} (inside acceptchange, line 177)", np.sum(units_in_CDI))
+    
 #    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
 #    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
 #    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
@@ -181,7 +187,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
 #    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
 #    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
-    arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
+    #arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
@@ -268,8 +274,8 @@ def main(*args):
             in_table = path + "\\Precincts_2020"
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
-            distcount=46
-            MaxIter=100
+            distcount=7
+            MaxIter=10
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
@@ -281,7 +287,10 @@ def main(*args):
             maxstopcounter=100
             arcprint("We are using default input choices")
     
-    
+    #Marking the start time of the run.
+    now = datetime.datetime.now()
+    print ("Starting date and time : ")
+    print (now.strftime("%Y-%m-%d %H:%M:%S"))
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
     #metric_count = 2
@@ -292,7 +301,7 @@ def main(*args):
 #    tot = sum(alpha)
 #    for i in range(metric_count):
 #        alpha[i] = alpha[i]/tot
-    alpha = [1/4, 1/4, 0, 1/4, 1/4]
+    alpha = [0.7, 0.15, 0, 0.075, 0.075]
 #    alpha[0] = 1
 #    alpha[1] = 0
 #    alpha[2] = 0
@@ -310,8 +319,8 @@ def main(*args):
     row_count=int(row_count)
     
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
-    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
-    #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_Senate_1000"
+    #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
+    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_701507575_100it"
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 #    no_of_dists=0
 #    while no_of_dists!=distcount:
@@ -399,7 +408,6 @@ def main(*args):
     global CDI_Count
     global CDI_Square
     global units_in_CDI
-    global temp_units_in_CDI
     #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
@@ -418,6 +426,7 @@ def main(*args):
     arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     
     arcprint("CDI_Count = {0}", CDI_Count)
+    arcprint("Total number of precints = {0}", np.sum(units_in_CDI))
     arcprint("CDI_Square = {0}", CDI_Square)
     
     deviation =[0]*(MaxIter+1)
@@ -509,9 +518,10 @@ def main(*args):
         
         #[units_in_CDI, CDI_Count] = County_Intersections.main(out_table, distcount, DistField)
         #CDI_Count_vals[count] = CDI_Count
-        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, DistField, CDI_Square_vals[count-1])
+        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1])
         CDI_Count_vals[count] = CDI_Count
         CDI_Square_vals[count] = CDI_Square
+        arcprint("Total number of precints = {0} (should not have changed) line 521", np.sum(units_in_CDI))
         
         #arcprint("absolute deviation is {0}",deviation[count])    
         DeltaE_dev = deviation[count] - deviation[count-1]
@@ -569,6 +579,7 @@ def main(*args):
                 DistrictStats[dist1-1].ConfirmStats(False)
                 DistrictStats[dist2-1].ConfirmStats(False)
                 MapStats.ConfirmMapStats(False)
+                temp_units_in_CDI = np.zeros([2,46], dtype=int)
                 
         
         
@@ -627,6 +638,10 @@ def main(*args):
     sym.renderer.fields = ['Dist_Assgn']
     lyr.symbology = sym
     aprx.save()
+    
+    now = datetime.datetime.now()
+    print ("Finishing date and time : ")
+    print (now.strftime("%Y-%m-%d %H:%M:%S"))
     
     
 #END FUNCTIONS    

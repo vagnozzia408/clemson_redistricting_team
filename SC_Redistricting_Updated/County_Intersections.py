@@ -14,11 +14,12 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
     hyp_count = cur_count - np.count_nonzero(Matrix[dist1-1]) - np.count_nonzero(Matrix[dist2-1])
     hyp_square = cur_square - np.sum(np.square(Matrix[dist1-1])) - np.sum(np.square(Matrix[dist2-1]))
     Temp_Matrix = np.zeros([2,46], dtype=int)
-    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,dist1,in_dist_field,dist2)) as cursor:
+    #with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,1,in_dist_field,2)) as cursor:
+    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
         for row in cursor:
-            if row[0]==dist1:
+            if row[0]==1:
                 Temp_Matrix[0][int((int(row[1])-1)/2)] +=1
-            if row[0]==dist2:
+            if row[0]==2:
                 Temp_Matrix[1][int((int(row[1])-1)/2)] +=1
     hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
     hyp_square += np.sum(np.square(Temp_Matrix[0])) + np.sum(np.square(Temp_Matrix[1]))
@@ -86,10 +87,10 @@ def main(*args):
             in_dist_field = "Dist_Assgn"
             arcprint("We are using default input choices")
     
-    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
-        for row in cursor:
-            row[0] = random.randint(0,7)
-            cursor.updateRow(row)
+#    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
+#        for row in cursor:
+#            row[0] = random.randint(0,7)
+#            cursor.updateRow(row)
     
     #CDI = County-District-Intersection
     global units_in_CDI
