@@ -14,13 +14,17 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
     hyp_count = cur_count - np.count_nonzero(Matrix[dist1-1]) - np.count_nonzero(Matrix[dist2-1])
     hyp_square = cur_square - np.sum(np.square(Matrix[dist1-1])) - np.sum(np.square(Matrix[dist2-1]))
     Temp_Matrix = np.zeros([2,46], dtype=int)
-    #with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,1,in_dist_field,2)) as cursor:
-    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
+    arcprint("We are rearranging {0} precints.", np.sum(Matrix[dist1-1]) + np.sum(Matrix[dist2-1]))
+    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,1,in_dist_field,2)) as cursor:
+    #with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
         for row in cursor:
-            if row[0]==1:
-                Temp_Matrix[0][int((int(row[1])-1)/2)] +=1
-            if row[0]==2:
-                Temp_Matrix[1][int((int(row[1])-1)/2)] +=1
+            if row[0] == 1:
+                Temp_Matrix[0][int((int(row[1])-1)/2)] = Temp_Matrix[0][int((int(row[1])-1)/2)] + 1
+            elif row[0] == 2:
+                Temp_Matrix[1][int((int(row[1])-1)/2)] = Temp_Matrix[1][int((int(row[1])-1)/2)] + 1
+    arcprint("We have moved {0} precints.", np.sum(Temp_Matrix[0]) + np.sum(Temp_Matrix[1]))
+    precint_count = np.sum(Matrix) - np.sum(Matrix[dist1-1]) - np.sum(Matrix[dist2-1]) + np.sum(Temp_Matrix)
+    arcprint("If we make this change the total will be {0}.", precint_count)
     hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
     hyp_square += np.sum(np.square(Temp_Matrix[0])) + np.sum(np.square(Temp_Matrix[1]))
     return(hyp_count, Temp_Matrix,hyp_square) 
@@ -93,7 +97,7 @@ def main(*args):
 #            cursor.updateRow(row)
     
     #CDI = County-District-Intersection
-    global units_in_CDI
+    #global units_in_CDI
     units_in_CDI = np.zeros([distcount,46], dtype=int)
     
     with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
