@@ -277,7 +277,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=3
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
@@ -322,7 +322,7 @@ def main(*args):
     
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
     #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
-    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_701507575_100it"
+    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_TryingToFixPrecincts"
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 #    no_of_dists=0
 #    while no_of_dists!=distcount:
@@ -414,7 +414,7 @@ def main(*args):
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     fair = MapStats.MedianMean
-    [units_in_CDI,CDI_Count,CDI_Square] = County_Intersections.main(out_table,distcount, DistField)
+    [units_in_CDI,CDI_Count,CDI_Square] = County_Intersections.main(out_table,distcount,DistField)
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
 #    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
@@ -505,6 +505,24 @@ def main(*args):
             count-=1
             stopcounter+=1
             continue
+        
+        NotGonnaMove = 0
+        TempDist1 = 0
+        TempDist2 = 0
+        ERRORS = 0
+        with arcpy.da.SearchCursor(out_table, ['temp_dist']) as cursor:
+            for row in cursor:
+                if row[0] == 0:
+                   NotGonnaMove += 1
+                elif row[0] == 1:
+                    TempDist1 += 1
+                elif row[0] == 2:
+                    TempDist2 += 1
+                else :
+                    ERRORS += 1
+                    arcprint("SOMETHING IS WRONG!")
+        arcprint("Number of precincts in: TempDist1 = {0}, TempDist2 = {1}, NotGonnaMove = {2}, So the total number of precincts is: {3}", TempDist1, TempDist2, NotGonnaMove,  TempDist1 +TempDist2 + NotGonnaMove)
+            
         
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop

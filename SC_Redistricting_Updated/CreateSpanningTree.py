@@ -425,18 +425,25 @@ def main(*args):
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
             
         arcprint("Updating temp_dist in CreateSpanningTree.py...")
+        arcprint("The Subgraphs have {0} and {1} precincts.", len(subgraphs[0]), len(subgraphs[1]))
+        Subgraph1Count = 0
+        Subgraph2Count = 0
+        DontMoveCount = 0
         with arcpy.da.UpdateCursor(shapefile, [sf_name_field,"temp_dist"]) as cursor:
             for row in cursor: 
                 if row[0] in subgraphs[0]:
                     row[1] = 1
+                    Subgraph1Count += 1
                 elif row[0] in subgraphs[1]:
                     row[1] = 2
+                    Subgraph2Count += 1
                 elif row[0] not in subgraphs[0] and row[0] not in subgraphs[1]:
                     row[1] = 0
+                    DontMoveCount += 1
                 else:
                     arcerror2("{0} is not assigned a proper district...", row[0])
                 cursor.updateRow(row)
-    
+        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
     #Returns values if this script was called by another script
     if __name__ != "__main__":
         return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists)

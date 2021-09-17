@@ -14,19 +14,44 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
     hyp_count = cur_count - np.count_nonzero(Matrix[dist1-1]) - np.count_nonzero(Matrix[dist2-1])
     hyp_square = cur_square - np.sum(np.square(Matrix[dist1-1])) - np.sum(np.square(Matrix[dist2-1]))
     Temp_Matrix = np.zeros([2,46], dtype=int)
-    arcprint("We are rearranging {0} precints.", np.sum(Matrix[dist1-1]) + np.sum(Matrix[dist2-1]))
+    FullCount = np.ndarray.sum(Matrix)
+    arcprint("The matrix inputted gives us a total numbe of precincts {0}", FullCount)
+    print(Matrix[dist1-1])
+    print(Matrix[dist2-1])
+    print("Number of precints currently in all districts")
+    for i in range(7):
+        if i == dist1 - 1 :
+            print("DIST1: ")
+        elif i == dist2 - 1: 
+            print("DIST2: ")
+        print(np.ndarray.sum(Matrix[i]))
+    dist1OrigPre = 0
+    dist2OrigPre = 0
+    for i in range(46):
+        dist1OrigPre += Matrix[dist1-1][i]
+        dist2OrigPre += Matrix[dist2-1][i]
+    Rearrange = np.ndarray.sum(Matrix[dist1-1]) + np.ndarray.sum(Matrix[dist2-1])
+    arcprint("We are rearranging {0} precints.", Rearrange)
+    TotalInRows = dist1OrigPre + dist2OrigPre
+    arcprint("The number of precints actually in those rows are: {0}, {1}, for a total of {2}", dist1OrigPre, dist2OrigPre, TotalInRows)
+    ActuallyMoving1 = 0
+    ActuallyMoving2 = 0
     with arcpy.da.SearchCursor(in_table, [in_dist_field,'County'], '''{}={} OR {}={}'''.format(in_dist_field,1,in_dist_field,2)) as cursor:
     #with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
         for row in cursor:
             if row[0] == 1:
-                Temp_Matrix[0][int((int(row[1])-1)/2)] = Temp_Matrix[0][int((int(row[1])-1)/2)] + 1
+                Temp_Matrix[0][int((int(row[1])-1)/2)] += 1
+                ActuallyMoving1 += 1
             elif row[0] == 2:
-                Temp_Matrix[1][int((int(row[1])-1)/2)] = Temp_Matrix[1][int((int(row[1])-1)/2)] + 1
-    arcprint("We have moved {0} precints.", np.sum(Temp_Matrix[0]) + np.sum(Temp_Matrix[1]))
-    precint_count = np.sum(Matrix) - np.sum(Matrix[dist1-1]) - np.sum(Matrix[dist2-1]) + np.sum(Temp_Matrix)
+                Temp_Matrix[1][int((int(row[1])-1)/2)] += 1
+                ActuallyMoving2 += 1
+    TotalMoved = np.ndarray.sum(Temp_Matrix[0]) +  np.ndarray.sum(Temp_Matrix[1])
+    arcprint("We have moved {0} precints.", TotalMoved)
+    arcprint("But by iteration we have actually moved {0} and {1} things", ActuallyMoving1, ActuallyMoving2)
+    precint_count = np.ndarray.sum(Matrix) - np.ndarray.sum(Matrix[dist1-1]) - np.ndarray.sum(Matrix[dist2-1]) + np.ndarray.sum(Temp_Matrix)
     arcprint("If we make this change the total will be {0}.", precint_count)
     hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
-    hyp_square += np.sum(np.square(Temp_Matrix[0])) + np.sum(np.square(Temp_Matrix[1]))
+    hyp_square += np.ndarray.sum(np.square(Temp_Matrix[0])) + np.ndarray.sum(np.square(Temp_Matrix[1]))
     return(hyp_count, Temp_Matrix,hyp_square) 
 
 def arcprint(message,*variables):
