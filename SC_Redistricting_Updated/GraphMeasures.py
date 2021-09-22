@@ -284,10 +284,14 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList):
     #DistrictList[dist1 - 1].HypVoteCountBlue = 0
     #DistrictList[dist2 - 1].HypVoteCountRed = 0
     #DistrictList[dist2 - 1].HypVoteCountBlue = 0
-    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "temp_dist", "Vote_Red", "Vote_Blue"], '''{}={} OR {}={}'''.format("Cluster_ID",dist1,"Cluster_ID",dist2)) as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "temp_dist", "Vote_Red", "Vote_Blue"], '''{}={} OR {}={}'''.format("temp_dist",1,"temp_dist",2)) as cursor:
         for row in cursor:
-            DistrictList[row[1] - 1].HypVoteCountRed += row[2]
-            DistrictList[row[1] - 1].HypVoteCountBlue += row[3]
+            if row[1]==1:
+                DistrictList[dist1-1].HypVoteCountRed += row[2]
+                DistrictList[dist1-1].HypVoteCountBlue += row[3]
+            if row[2]==2:
+                DistrictList[dist1-1].HypVoteCountRed += row[2]
+                DistrictList[dist1-1].HypVoteCountBlue += row[3]
 
     dis = DistrictList[dist1-1]
     if dis.HypVoteCountRed == dis.HypVoteCountBlue :
@@ -396,7 +400,7 @@ def main(*args):
 
     MapObject = Map(0)  
     
-    with arcpy.da.SearchCursor(shapefile, ["CLUSTER_ID", "Vote_Blue", "Vote_Red"], "*") as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["Dist_Assgn", "Vote_Blue", "Vote_Red"], "*") as cursor:
         for row in cursor:
             DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
             DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])

@@ -5,9 +5,9 @@ Created on Mon Sep  6 12:12:47 2021
 @author: blake
 """
 
-import arcpy,math,os,sys
+import arcpy,os,sys
 import numpy as np
-import random
+#import random
 
 
 def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field, cur_square):
@@ -31,7 +31,7 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
         dist1OrigPre += Matrix[dist1-1][i]
         dist2OrigPre += Matrix[dist2-1][i]
     Rearrange = np.ndarray.sum(Matrix[dist1-1]) + np.ndarray.sum(Matrix[dist2-1])
-    arcprint("We are rearranging {0} precints.", Rearrange)
+    arcprint("We are rearranging {0} precincts.", Rearrange)
     TotalInRows = dist1OrigPre + dist2OrigPre
     arcprint("The number of precints actually in those rows are: {0}, {1}, for a total of {2}", dist1OrigPre, dist2OrigPre, TotalInRows)
     ActuallyMoving1 = 0
@@ -111,7 +111,7 @@ def main(*args):
             distcount = args[1]
             in_dist_field = args[2]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            in_table = path + "\\Precincts_2020"
+            in_table = path + "\\Precincts_2020_SA_7dists_701507575_100it"
             distcount = 7
             in_dist_field = "Dist_Assgn"
             arcprint("We are using default input choices")
@@ -134,6 +134,8 @@ def main(*args):
     
     #Squares each entry of the matrix and adds them all together
     CDI_Square = np.sum(np.square(units_in_CDI))
+    
+    arcprint("units_in_CDI = {0}",units_in_CDI)
     
     return(units_in_CDI,CDI_Count,CDI_Square)
     

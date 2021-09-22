@@ -26,8 +26,8 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-#seed = 1743
-#random.seed(seed)
+seed = 1743
+random.seed(seed)
 import CreateSpanningTree
 import FindBoundaryShapes
 import networkx as nx
@@ -152,6 +152,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("The change was accepted!")
     
     #Updates the neighbor list table after each iteration
+    #Note: nlf[3] = 'src_dist', nlf[4] = 'nbr_dist'
     with arcpy.da.UpdateCursor(neighbor_list,nlf,'''{}={} OR {}={} OR {}={} OR {}={}'''.format(nlf[3], dist1, nlf[4], dist1, nlf[3], dist2, nlf[4], dist2)) as cursor:
         for row in cursor:
             if row[0] in hypG.nodes:
@@ -255,7 +256,7 @@ def main(*args):
         coolingrate = (FinalT/T)**(1/MaxIter)
         tol = float(sys.argv[8])
         #neighbor_list = sys.argv[9]
-        maxstopcounter = sys.argv[10]
+        maxstopcounter = sys.argv[9]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
@@ -268,7 +269,7 @@ def main(*args):
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol = float(args[7])
             #neighbor_list = args[8]
-            maxstopcounter = args[9]
+            maxstopcounter = args[8]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
@@ -282,7 +283,7 @@ def main(*args):
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
             T = 20
-            FinalT = 0.05
+            FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
             #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
@@ -291,11 +292,9 @@ def main(*args):
     
     #Marking the start time of the run.
     now = datetime.datetime.now()
-    print ("Starting date and time : ")
-    print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    arcprint("Starting date and time : {0}",now.strftime("%Y-%m-%d %H:%M:%S"))
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
-    #metric_count = 2
     metric_count = 5
     alpha = metric_count*[0]
 #    for i in range(metric_count):
@@ -304,10 +303,6 @@ def main(*args):
 #    for i in range(metric_count):
 #        alpha[i] = alpha[i]/tot
     alpha = [0.7, 0.15, 0, 0.075, 0.075]
-#    alpha[0] = 1
-#    alpha[1] = 0
-#    alpha[2] = 0
-#    alpha[3] = 0
     arcprint("alpha = {0}",alpha)
         
     #Normalizing factor
@@ -324,21 +319,8 @@ def main(*args):
     #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
     out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_TryingToFixPrecincts"
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
-#    no_of_dists=0
-#    while no_of_dists!=distcount:
-#        no_of_dists=0
-#        arcprint("Running BuildBalancedZones...")
-#        #arcpy.stats.BuildBalancedZones(in_table,out_table,"NUMBER_OF_ZONES",distcount,None,None,"CONTIGUITY_EDGES_ONLY",None, None,[[in_pop_field,"average"]])
-#        arcpy.stats.BuildBalancedZones(in_table,out_table,"NUMBER_OF_ZONES",distcount,None,None,"CONTIGUITY_EDGES_ONLY",None, None,None)
-#        #The following code ensures that exactly distcount districts were created
-#        with arcpy.da.SearchCursor(out_table, "ZONE_ID") as cursor:
-#            for row in cursor:
-#                if no_of_dists<row[0]:
-#                    no_of_dists=int(row[0])
-    
-    
-    
-    #Trying to use Spatially Constrained Multivariate Clustering instead of BBZ
+
+    #Using Spatially Constrained Multivariate Clustering instead of BBZ to create a random starting district
     if not arcpy.ListFields(in_table, "Test_val"): #if field does not exist
         arcpy.AddField_management(in_table, "Test_val","LONG",field_alias="Test_val")
         arcprint("Adding 'Test_val' field to in_table")
@@ -380,18 +362,6 @@ def main(*args):
             row[0] = row[1]
             cursor.updateRow(row)
     
-
-    
-#    #Finds field name for population
-#    lstFields = arcpy.ListFields(out_table)
-#    PopField = None
-#    for field in lstFields:
-#        if field.name == "SUM_Popula" or field.name == "Precinct_P":
-#            PopField = field.name
-#            break
-#    if PopField == None:
-#        arcerror("PopField is empty. Neither 'SUM_Popula' nor 'Precinct_P' were found as field names.")
-    
     #Finds sum of each district population
     sumpop=[]
     sumpop = [0]*distcount
@@ -410,20 +380,12 @@ def main(*args):
 #    global CDI_Count
 #    global CDI_Square
 #    global units_in_CDI
-    #DistrictStats = GraphMeasures.main(out_table, "CLUSTER_ID")
-    [DistrictStats, MapStats] = GraphMeasures.main(out_table, "CLUSTER_ID")
+    #DistrictStats = GraphMeasures.main(out_table, DistField)
+    [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField)
     comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
     fair = MapStats.MedianMean
     [units_in_CDI,CDI_Count,CDI_Square] = County_Intersections.main(out_table,distcount,DistField)
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
-    
-#    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
-#    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
-#    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
-#    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
-#    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
-#    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
-#    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     
@@ -432,14 +394,14 @@ def main(*args):
     arcprint("CDI_Square = {0}", CDI_Square)
     
     deviation =[0]*(MaxIter+1)
-    global avgcomp
+#    global avgcomp
     avgcomp = [0]*(MaxIter+1)  
-    global fairscore
+#    global fairscore
     fairscore = [0]*(MaxIter+1)
     r_fairscore = [0]*(MaxIter+1)
-    global CDI_Count_vals
+#    global CDI_Count_vals
     CDI_Count_vals = [0]*(MaxIter+1)
-    global CDI_Square_vals
+#    global CDI_Square_vals
     CDI_Square_vals = [0]*(MaxIter+1)
     
     
@@ -496,7 +458,7 @@ def main(*args):
             count -= 1
             stopcounter += 1
             continue
-        except SystemError:
+        except SystemError: #Cuts the code if we encounter a SystemError in CreateSpanningTree
             arcprint("We had a system error. Selecting new districts")
             count -= 1
             stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
@@ -567,7 +529,7 @@ def main(*args):
         #Calculates DeltaE based on each of the metrics_
         #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
         #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
-#        DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
+        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
         DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_square*alpha[4]/norm[4]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
@@ -602,7 +564,7 @@ def main(*args):
                 temp_units_in_CDI = np.zeros([2,46], dtype=int)
                 
         
-        
+    arcprint("\n")
     if T<=0.01:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)
     if count >=MaxIter:
@@ -660,8 +622,7 @@ def main(*args):
     aprx.save()
     
     now = datetime.datetime.now()
-    print ("Finishing date and time : ")
-    print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    arcprint("Finishing date and time : {0}",now.strftime("%Y-%m-%d %H:%M:%S"))
     
     
 #END FUNCTIONS    

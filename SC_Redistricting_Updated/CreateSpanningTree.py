@@ -437,7 +437,7 @@ def main(*args):
                 elif row[0] in subgraphs[1]:
                     row[1] = 2
                     Subgraph2Count += 1
-                elif row[0] not in subgraphs[0] and row[0] not in subgraphs[1]:
+                elif (row[0] not in subgraphs[0]) and (row[0] not in subgraphs[1]):
                     row[1] = 0
                     DontMoveCount += 1
                 else:
