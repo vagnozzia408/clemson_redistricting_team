@@ -23,6 +23,7 @@ def FindNamingFields(in_table):
     #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
     breakflag=0
     for name in ["CLUSTER_ID", "ZONE_ID"]:
+    #for name in ["Dist_Assgn"]:
         for field in lstFields:
             if name == field.name:
                 distfield = name
@@ -121,10 +122,10 @@ def main(*args):
     neighbor_list = in_table + "_nbr_list"
 #    locked = arcpy.TestSchemaLock(neighbor_list)
 #    arcprint("On line 123, Lock status was {0}",locked)
-    if arcpy.Exists(neighbor_list)==False:
+#    if arcpy.Exists(neighbor_list)==False:
 #        locked = arcpy.TestSchemaLock(neighbor_list)
 #        arcprint("On line 126, Lock status was {0}",locked)
-        arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
+    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
 #        locked = arcpy.TestSchemaLock(neighbor_list)
 #        arcprint("On line 129, Lock status was {0}",locked)
 #        aprx = arcpy.mp.ArcGISProject(currentdir + "\\SC_Redistricting_Updated.aprx")
@@ -177,8 +178,8 @@ def main(*args):
                 in_row[1]=1
             in_cursor.updateRow(in_row)
     
-#    if __name__ != "__main__":
-#        return(neighbor_list)
+    if __name__ != "__main__":
+        return(neighbor_list)
     
 if __name__ == "__main__":
     main()

@@ -145,7 +145,7 @@ def FindNamingFields(in_table):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, precinct_list):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -169,6 +169,18 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             objid= row[0]
             row[1] = stateG.nodes[objid]["District Number"]
             cursor.updateRow(row)
+    precinct_list[dist1-1] = []
+    precinct_list[dist2-1] = []
+    with arcpy.da.SearchCursor(out_table,["SOURCE_ID", DistField], '''{}={} OR {}={}'''.format(DistField,dist1,DistField,dist2)) as cursor:
+        for row in cursor:
+            if row[1] == dist1:
+                precinct_list[dist1-1].append(row[0])
+            elif row[1] == dist2:
+                precinct_list[dist2-1].append(row[0])
+            else :
+                print("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    precinct_list[dist1-1].sort()
+    precinct_list[dist2-1].sort()
     DistrictStats[dist1-1].ConfirmStats(True)
     DistrictStats[dist2-1].ConfirmStats(True)
     MapStats.ConfirmMapStats(True)
@@ -192,7 +204,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
-    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI)
+    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, precinct_list)
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -278,7 +290,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=3
+            MaxIter=10
             ###INITIAL TEMPS NEED TO BE ADJUSTED
 #            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
 #            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
@@ -349,18 +361,28 @@ def main(*args):
             row[0] = 0
             cursor.updateRow(row)
     
-    FindBoundaryShapes.main(out_table)
+    #FindBoundaryShapes.main(out_table)
     #global neighbor_list
-    neighbor_list = out_table + "_nbr_list"
-    
+    #neighbor_list = out_table + "_nbr_list"
+    neighbor_list = FindBoundaryShapes.main(out_table)
     #Returns DistField "Dist_Assgn" and creates the field if it's not already there
     DistField = AddDistField(out_table)
-
+    arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
+    CountyField = "County_Num"
+    precinct_list = [[ ] for d in range(distcount)]
+    print(precinct_list)
     # Copies all CLUSTER_ID's into Dist_Assgn
-    with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID"]) as cursor:
+    with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County","County_Num"]) as cursor:
         for row in cursor:
             row[0] = row[1]
+            row[4] = int(row[3])
+            precinct_list[row[0]-1].append(row[2])
             cursor.updateRow(row)
+    count = 0
+    for plist in precinct_list:
+        count += 1
+        plist.sort()
+        arcprint("At the start, the total number of precincts in District{0} is {1}.", count, len(plist))
     
     #Finds sum of each district population
     sumpop=[]
@@ -452,7 +474,7 @@ def main(*args):
             dist2 = random.randint(1,distcount)
         arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
         try:
-            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, precinct_list)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count -= 1
@@ -468,22 +490,22 @@ def main(*args):
             stopcounter+=1
             continue
         
-        NotGonnaMove = 0
-        TempDist1 = 0
-        TempDist2 = 0
-        ERRORS = 0
-        with arcpy.da.SearchCursor(out_table, ['temp_dist']) as cursor:
-            for row in cursor:
-                if row[0] == 0:
-                   NotGonnaMove += 1
-                elif row[0] == 1:
-                    TempDist1 += 1
-                elif row[0] == 2:
-                    TempDist2 += 1
-                else :
-                    ERRORS += 1
-                    arcprint("SOMETHING IS WRONG!")
-        arcprint("Number of precincts in: TempDist1 = {0}, TempDist2 = {1}, NotGonnaMove = {2}, So the total number of precincts is: {3}", TempDist1, TempDist2, NotGonnaMove,  TempDist1 +TempDist2 + NotGonnaMove)
+#        NotGonnaMove = 0
+#        TempDist1 = 0
+#        TempDist2 = 0
+#        ERRORS = 0
+#        with arcpy.da.SearchCursor(out_table, ['temp_dist']) as cursor:
+#            for row in cursor:
+#                if row[0] == 0:
+#                   NotGonnaMove += 1
+#                elif row[0] == 1:
+#                    TempDist1 += 1
+#                elif row[0] == 2:
+#                    TempDist2 += 1
+#                else :
+#                    ERRORS += 1
+#                    arcprint("SOMETHING IS WRONG!")
+#        arcprint("Number of precincts in: TempDist1 = {0}, TempDist2 = {1}, NotGonnaMove = {2}, So the total number of precincts is: {3}", TempDist1, TempDist2, NotGonnaMove,  TempDist1 +TempDist2 + NotGonnaMove)
             
         
         hypsumpop[dist1-1] = dist1_pop
@@ -500,7 +522,7 @@ def main(*args):
         
         #[units_in_CDI, CDI_Count] = County_Intersections.main(out_table, distcount, DistField)
         #CDI_Count_vals[count] = CDI_Count
-        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1])
+        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
         CDI_Count_vals[count] = CDI_Count
         CDI_Square_vals[count] = CDI_Square
         arcprint("Total number of precints = {0} (should not have changed) line 521", np.sum(units_in_CDI))
@@ -536,7 +558,7 @@ def main(*args):
         
         if DeltaE <0: #An improvement!
             #[T,sumpop,stateG,neighbor_list,DistrictStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI)
+            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, precinct_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, precinct_list)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -550,7 +572,7 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 #[T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,precinct_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,precinct_list)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
