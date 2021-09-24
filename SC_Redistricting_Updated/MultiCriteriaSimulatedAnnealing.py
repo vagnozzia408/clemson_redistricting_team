@@ -86,17 +86,17 @@ def Flip():
                         row[1] = currdist
                         cursor.updateRow(row)'''
 
-def AddDistField(in_table):
-    lstFields = arcpy.ListFields(in_table)
-    DistField = "Dist_Assgn"
-    x = False
-    for field in lstFields:
-        if field.name == "Dist_Assgn":
-            x = True
-    if x != True:
-        arcprint("Field does not exist. Adding Dist_Assgn")
-        arcpy.AddField_management(in_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
-    return(DistField)    
+#def AddDistField(in_table):
+#    lstFields = arcpy.ListFields(in_table)
+#    DistField = "Dist_Assgn"
+#    x = False
+#    for field in lstFields:
+#        if field.name == "Dist_Assgn":
+#            x = True
+#    if x != True:
+#        arcprint("Field does not exist. Adding Dist_Assgn")
+#        arcpy.AddField_management(in_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
+#    return(DistField)    
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
     """Returns a single positive integer that sums each district's deviation from the ideal population. Lower numbers for 'deviation' are better. A value of zero would indicate that every district has an equal number of people"""
@@ -178,16 +178,8 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
-    arcprint("Total number of precints = {0} (inside acceptchange, line 177)", np.sum(units_in_CDI))
-    
-#    arcprint("The stats for district 1 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[0].Area, DistrictStats[0].Perimeter, DistrictStats[0].ppCompactScore)
-#    arcprint("The stats for district 2 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[1].Area, DistrictStats[1].Perimeter, DistrictStats[1].ppCompactScore)
-#    arcprint("The stats for district 3 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[2].Area, DistrictStats[2].Perimeter, DistrictStats[2].ppCompactScore)
-#    arcprint("The stats for district 4 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[3].Area, DistrictStats[3].Perimeter, DistrictStats[3].ppCompactScore)
-#    arcprint("The stats for district 5 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[4].Area, DistrictStats[4].Perimeter, DistrictStats[4].ppCompactScore)
-#    arcprint("The stats for district 6 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[5].Area, DistrictStats[5].Perimeter, DistrictStats[5].ppCompactScore)
-#    arcprint("The stats for district 7 are: Area = {0}, Perimeter = {1}, PP = {2}", DistrictStats[6].Area, DistrictStats[6].Perimeter, DistrictStats[6].ppCompactScore)
-    
+    arcprint("Total number of precincts = {0} (calculated by np.sum(units_in_CDI, inside acceptchange, line 177)", np.sum(units_in_CDI))
+       
     #arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
@@ -228,10 +220,8 @@ def main(*args):
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
-        arcprint("We are running this from inside ArcGIS")
     else:
         runspot = "console"
-        arcprint("We are running this from the python console")   
             
     # Set environment settings
     global currentdir
@@ -255,7 +245,6 @@ def main(*args):
         FinalT = float(sys.argv[7])
         coolingrate = (FinalT/T)**(1/MaxIter)
         tol = float(sys.argv[8])
-        #neighbor_list = sys.argv[9]
         maxstopcounter = sys.argv[9]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
@@ -268,7 +257,6 @@ def main(*args):
             FinalT = float(args[6])
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol = float(args[7])
-            #neighbor_list = args[8]
             maxstopcounter = args[8]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
@@ -279,14 +267,10 @@ def main(*args):
             in_name_field = "OBJECTID_1"
             distcount=7
             MaxIter=3
-            ###INITIAL TEMPS NEED TO BE ADJUSTED
-#            T = 123000+109000 #Initial Temperature = stdev(pop) + mean pop  #FOR COUNTIES
-#            T = 1300+2200  #Initial Temperature = stdev(pop) + mean pop  #FOR PRECINCTS
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
-            #neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             maxstopcounter=100
             arcprint("We are using default input choices")
     
@@ -306,9 +290,7 @@ def main(*args):
     arcprint("alpha = {0}",alpha)
         
     #Normalizing factor
-    global prev_DeltaE
     prev_DeltaE = np.zeros([5,metric_count],dtype=float)
-    global norm
     norm = [0]*metric_count
     
     #Counts number of rows in out_table      
@@ -349,18 +331,20 @@ def main(*args):
             row[0] = 0
             cursor.updateRow(row)
     
-    FindBoundaryShapes.main(out_table)
-    #global neighbor_list
-    neighbor_list = out_table + "_nbr_list"
+    #Assigns DistField as "Dist_Assgn" and creates the field if it's not already there
+    if not arcpy.ListFields(out_table, "Dist_Assgn"):
+        arcpy.AddField_management(out_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
+    DistField="Dist_Assgn"
     
-    #Returns DistField "Dist_Assgn" and creates the field if it's not already there
-    DistField = AddDistField(out_table)
-
     # Copies all CLUSTER_ID's into Dist_Assgn
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID"]) as cursor:
         for row in cursor:
             row[0] = row[1]
             cursor.updateRow(row)
+    
+    #Creates the neighbor list
+    FindBoundaryShapes.main(out_table)
+    neighbor_list = out_table + "_nbr_list"
     
     #Finds sum of each district population
     sumpop=[]
@@ -374,45 +358,35 @@ def main(*args):
     arcprint("The sum of polygon populations (i.e. sumpop) is {0}.",sumpop)
     idealpop=sum(sumpop)/distcount    
     
-#    global DistrictStats
-#    global MapStats
-#    global fair
-#    global CDI_Count
-#    global CDI_Square
-#    global units_in_CDI
-    #DistrictStats = GraphMeasures.main(out_table, DistField)
-    [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField)
-    comp = [o.ppCompactScore for o in DistrictStats] #A list of compactness scores
-    fair = MapStats.MedianMean
-    [units_in_CDI,CDI_Count,CDI_Square] = County_Intersections.main(out_table,distcount,DistField)
+    
+    [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField) #Populates DistrictStats and MapStats using GraphMeasures
+    comp = [o.ppCompactScore for o in DistrictStats]    #comp is a list of compactness scores
+    fair = MapStats.MedianMean     #fair is a list of MedianMean scores
+    
+    #Populates County-District-Intersection (CDI) values
+    [units_in_CDI, CDI_Count, CDI_Square] = County_Intersections.main(out_table,distcount,DistField)
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
-    arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
-    
+    arcprint("The fairness scores for this map are: Median_Mean = {0}", fair)
     arcprint("CDI_Count = {0}", CDI_Count)
-    arcprint("Total number of precints = {0}", np.sum(units_in_CDI))
+    arcprint("Total number of precints (calculated by np.sum(units_in_CDI)) = {0}", np.sum(units_in_CDI))
     arcprint("CDI_Square = {0}", CDI_Square)
     
+    #Creates vectors of zeros that will hold values for population deviation, average compactness, etc.
     deviation =[0]*(MaxIter+1)
-#    global avgcomp
     avgcomp = [0]*(MaxIter+1)  
-#    global fairscore
     fairscore = [0]*(MaxIter+1)
     r_fairscore = [0]*(MaxIter+1)
-#    global CDI_Count_vals
     CDI_Count_vals = [0]*(MaxIter+1)
-#    global CDI_Square_vals
     CDI_Square_vals = [0]*(MaxIter+1)
     
-    
+    #Populates the zeroth entry for all vectors
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
     fairscore[0] = abs(fair)
     r_fairscore[0] = fair
     CDI_Count_vals[0] = CDI_Count
     CDI_Square_vals[0] = CDI_Square
-    
-    
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
     if not arcpy.ListFields(neighbor_list, "src_dist"): #Adds src_dist and nbr_dist to neighbor_list if they don't already exist. These fields will be the ones that change mid-algorithm
@@ -425,13 +399,13 @@ def main(*args):
             orig_dist_names.append(field.name)
     odn=orig_dist_names #An alias
     
+    #Copies all original district numbers into src_dist and nbr_dist
+    #Note: odn[0] = "src_CLUSTER_ID" and odn[1] = "nbr_CLUSTER_ID"
     with arcpy.da.UpdateCursor(neighbor_list, [odn[0],odn[1],'src_dist', 'nbr_dist']) as cursor:
         for row in cursor:
             row[2]=row[0] #src_dist = src_CLUSTER_ID
             row[3]=row[1] #nbr_dist = nrb_CLUSTER_ID
             cursor.updateRow(row)
-    
-
     
     hypsumpop=sumpop.copy()
     stateG = nx.Graph()
@@ -442,8 +416,6 @@ def main(*args):
     
     while T>0.1 and count<MaxIter and stopcounter<maxstopcounter:
         arcprint("\ncount = {0}. About to add 1.",count)
-        if count == 20:
-            arcprint("count is 20")
         count = count+1
         dist1 = random.randint(1,distcount)
         dist2 = random.randint(1,distcount)

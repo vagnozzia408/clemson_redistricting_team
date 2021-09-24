@@ -22,7 +22,8 @@ def FindNamingFields(in_table):
             break
     #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
     breakflag=0
-    for name in ["CLUSTER_ID", "ZONE_ID"]:
+#    for name in ["Dist_Assgn"]:
+    for name in ["CLUSTER_ID","ZONE_ID"]:
         for field in lstFields:
             if name == field.name:
                 distfield = name
@@ -98,6 +99,7 @@ def main(*args):
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     arcpy.env.workspace = path
     
+    arcpy.env.overwriteOutput = True
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         in_table = sys.argv[1]
@@ -119,63 +121,46 @@ def main(*args):
     
     #Creates a neighbor list if one currently does not exist
     neighbor_list = in_table + "_nbr_list"
-#    locked = arcpy.TestSchemaLock(neighbor_list)
-#    arcprint("On line 123, Lock status was {0}",locked)
-    if arcpy.Exists(neighbor_list)==False:
-#        locked = arcpy.TestSchemaLock(neighbor_list)
-#        arcprint("On line 126, Lock status was {0}",locked)
-        arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
-#        locked = arcpy.TestSchemaLock(neighbor_list)
-#        arcprint("On line 129, Lock status was {0}",locked)
-#        aprx = arcpy.mp.ArcGISProject(currentdir + "\\SC_Redistricting_Updated.aprx")
-#        m = aprx.listMaps("Map")[0] 
-#        addTab = arcpy.mp.Table(neighbor_list)
-#        locked = arcpy.TestSchemaLock(neighbor_list)
-#        arcprint("On line 134, Lock status was {0}",locked)
-#        m.addTable(addTab) #Adds table to Table of Contents
-#        aprx.save()
-#        del aprx
-#        del addTab
-        
-    srcnamefield = "src_" + namefield
-    nbrnamefield = "nbr_" + namefield
-    srcdistfield = "src_" + distfield
-    nbrdistfield = "nbr_" + distfield
-    
-#    srcnamefield = ["src_" + s for s in srcnamefield]
-#    nbrnamefield = ["nbr_" + s for s in nbrnamefield]
-#    srcdistfield = ["src_" + s for s in srcdistfield]
-#    nbrdistfield = ["nbr_" + s for s in nbrdistfield]
 
-    fieldList = arcpy.ListFields(in_table)    
-    fieldNames = [f.name for f in fieldList]
     
-    if "Boundary" not in fieldNames:
-        arcpy.management.AddField(in_table, "Boundary", "SHORT")
-    
-    #Creates fields names for use in in_table cursor actions
-    fields4in_table = [namefield, "Boundary"]
-    
-    #Creates field names for use in nbrlist cursor actions
-    fields4nbrlist = [srcnamefield, nbrnamefield, srcdistfield, nbrdistfield]
-    fields4nbrlist.append("NODE_COUNT")
+#    if arcpy.Exists(neighbor_list)==False:
+    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
 
-    with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
-        for in_row in in_cursor:
-            in_row[1]=0 #Boundary = 0
-            boundaryflag=0
-            #arcprint("in_row is {0}",in_row)
-            #SQLexpression = MakeSQLExpression(in_row, fields4nbrlist)
-            SQLexpression = "{0} = {1}".format(srcnamefield,in_row[0])
-            #arcprint("SQLexpression is {0}",SQLexpression)
-            with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, SQLexpression) as cursor:
-                for row in cursor:   
-                    if row[2] != row[3]: #src_Cluster_ID != nbr_Cluster_ID
-                        boundaryflag = 1 #shape is on a boundary
-                        break
-            if boundaryflag ==1:
-                in_row[1]=1
-            in_cursor.updateRow(in_row)
+###EVERYTHING BELOW THIS LINE ATTEMPTS TO FIND WHICH POLYGONS ARE ON DISTRICT BOUNDARIES
+#    srcnamefield = "src_" + namefield
+#    nbrnamefield = "nbr_" + namefield
+#    srcdistfield = "src_" + distfield
+#    nbrdistfield = "nbr_" + distfield
+#
+#    fieldList = arcpy.ListFields(in_table)    
+#    fieldNames = [f.name for f in fieldList]
+#    
+#    if "Boundary" not in fieldNames:
+#        arcpy.management.AddField(in_table, "Boundary", "SHORT")
+#    
+#    #Creates fields names for use in in_table cursor actions
+#    fields4in_table = [namefield, "Boundary"]
+#    
+#    #Creates field names for use in nbrlist cursor actions
+#    fields4nbrlist = [srcnamefield, nbrnamefield, srcdistfield, nbrdistfield]
+#    fields4nbrlist.append("NODE_COUNT")
+#
+#    #Finds all units that are on a boundary
+#    with arcpy.da.UpdateCursor(in_table, fields4in_table) as in_cursor:
+#        for in_row in in_cursor:
+#            in_row[1]=0 #Boundary = 0
+#            boundaryflag=0
+#            #SQLexpression = MakeSQLExpression(in_row, fields4nbrlist)
+#            SQLexpression = "{0} = {1}".format(srcnamefield,in_row[0])
+#            #arcprint("SQLexpression is {0}",SQLexpression)
+#            with arcpy.da.SearchCursor(neighbor_list, fields4nbrlist, SQLexpression) as cursor:
+#                for row in cursor:   
+#                    if row[2] != row[3]: #src_Cluster_ID != nbr_Cluster_ID
+#                        boundaryflag = 1 #shape is on a boundary
+#                        break
+#            if boundaryflag ==1:
+#                in_row[1]=1
+#            in_cursor.updateRow(in_row)
     
 #    if __name__ != "__main__":
 #        return(neighbor_list)

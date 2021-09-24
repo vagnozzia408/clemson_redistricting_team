@@ -29,8 +29,8 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os, sys
 import random
-#seed = 1738
-#random.seed(seed)
+seed = 1743
+random.seed(seed)
 #from random import randint
 import networkx as nx
 #from openpyxl import load_workbook
@@ -290,47 +290,9 @@ def main(*args):
                 break
     del cursor
 
-#    ## Where Amy's code edits start.
-#    dist1_bdnds = [] #Creates empty list of boundary units for dist1
-#    dist2_bdnds = [] #Creates empty list of boundary units for dist2
-#    
-#    #Fills list of boundary units for dist1 and dist2
-#    with arcpy.da.SearchCursor(shapefile, ["OBJECTID", "Cluster_ID"], """{}={} AND ({}={} OR {}={})""".
-#                           format("Boundary",1, "Cluster_ID", dist1,"Cluster_ID",dist2)) as cursor: #Limits search to rows containing units from dist1 and dist2
-#        for row in cursor:
-#            if row[1]==dist1: #If ClusterID==dist1 and Boundary unit is Yes
-#                if dist1_bdnds.count(row[0])==0: #If we haven't already added the unit, add it to the list
-#                    dist1_bdnds.append(row[0])
-#            elif row[1]==dist2: #If ClusterID==dist2 and Boundary unit is Yes
-#                if dist2_bdnds.count(row[0])==0:  #If we haven't already added the unit, add it to the list
-#                    dist2_bdnds.append(row[0])
-#    if len(dist1_bdnds)<=len(dist2_bdnds): #Determine the district with the fewest boundary units
-#        pridist = dist1 #primary district
-#        secdist = dist2 #secondary district
-#    else:
-#        pridist = dist2
-#        secdist = dist1
-#    
-#    AdjFlag = False
-#    if dist1==pridist:
-#        dist_tuple = tuple(dist1_bdnds)
-#    else: 
-#        dist_tuple = tuple(dist2_bdnds)
-#    #with arcpy.da.SearchCursor(neighbor_list, ["src_OBJECTID", "nbr_OBJECTID"], """({} IN {}) AND {}={}""".
-#    #                               format("src_OBJECTID", dist_tuple,"nbr_CLUSTER_ID",secdist)) as cursor:
-#    with arcpy.da.SearchCursor(neighbor_list, [nlf[0], nlf[1]], """({} IN {}) AND {}={}""".
-#                                   format(nlf[0], dist_tuple,nlf[4],secdist)) as cursor:
-#        for row in cursor:
-#            AdjFlag = True
-#            arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", pridist, secdist, row[0],row[1])
-#            break
-
     if AdjFlag==0: 
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
         arcerror2("")
-    
-    ## Where Amy's code edits end.
-    
     
     G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
@@ -358,7 +320,7 @@ def main(*args):
         distnum = dict(stateG.nodes("District Number"))
     if popnum == {}:
         popnum = dict(stateG.nodes("Population"))
-        
+    
     #Finds nodes that are in district 1 or district 2
     for v in distnum:
         if distnum[v]==dist1 or distnum[v]==dist2:
@@ -414,7 +376,7 @@ def main(*args):
                 stateG.nodes[i]["District Number"] = dist2
                 distnum[i] = dist2
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
-            
+        
         else:
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist2
@@ -423,9 +385,9 @@ def main(*args):
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
             arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
-            
+        
         arcprint("Updating temp_dist in CreateSpanningTree.py...")
-        arcprint("The Subgraphs have {0} and {1} precincts.", len(subgraphs[0]), len(subgraphs[1]))
+        arcprint("The subgraphs have {0} and {1} precincts.", len(subgraphs[0]), len(subgraphs[1]))
         Subgraph1Count = 0
         Subgraph2Count = 0
         DontMoveCount = 0
@@ -447,7 +409,6 @@ def main(*args):
     #Returns values if this script was called by another script
     if __name__ != "__main__":
         return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists)
-
 
 if __name__ == "__main__":
     main()
