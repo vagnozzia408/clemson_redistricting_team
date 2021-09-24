@@ -22,8 +22,8 @@ def FindNamingFields(in_table):
             break
     #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
     breakflag=0
-#    for name in ["Dist_Assgn"]:
-    for name in ["CLUSTER_ID","ZONE_ID"]:
+
+    for name in ["CLUSTER_ID", "ZONE_ID"]:
         for field in lstFields:
             if name == field.name:
                 distfield = name
@@ -122,7 +122,8 @@ def main(*args):
     #Creates a neighbor list if one currently does not exist
     neighbor_list = in_table + "_nbr_list"
 
-    
+    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
+
 #    if arcpy.Exists(neighbor_list)==False:
     arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
 
@@ -162,8 +163,8 @@ def main(*args):
 #                in_row[1]=1
 #            in_cursor.updateRow(in_row)
     
-#    if __name__ != "__main__":
-#        return(neighbor_list)
+    if __name__ != "__main__":
+        return(neighbor_list)
     
 if __name__ == "__main__":
     main()

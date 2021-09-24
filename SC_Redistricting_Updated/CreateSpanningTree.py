@@ -205,6 +205,7 @@ def main(*args):
         dist1=int(sys.argv[6])
         dist2=int(sys.argv[7])
         stateG = sys.argv[8]
+        p_list = sys.argv[9]
         #idealpop=float(sys.argv[7])
         del stateG #We can't insert a graph from the ArcGIS input line
         arcprint("Running CreateSpanningTree from command line arguments")
@@ -218,6 +219,7 @@ def main(*args):
             dist1 = int(args[5])
             dist2 = int(args[6])
             stateG = args[7]
+            p_list = args[8]
             #idealpop = args[8]
             arcprint("Running CreateSpanningTree using input from another script")
         except IndexError: #Finally, manually assigns input values if they aren't provided
@@ -228,6 +230,7 @@ def main(*args):
             neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
             dist1=6
             dist2=4
+            p_list = [[]] * 7
             #idealpop = 717252
             arcprint("Running CreateSpanningTree using default input choices")
 
@@ -262,7 +265,7 @@ def main(*args):
     orig_dist_names=[]
     lstFields = arcpy.ListFields(neighbor_list)
     for field in lstFields:
-        if field.name in ["src_CLUSTER_ID", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID"]:
+        if field.name in ["src_CLUSTER_ID", "src_Dist_Assgn", "src_ZONE_ID", "nbr_CLUSTER_ID", "nbr_ZONE_ID", "nbr_Dist_Assgn"]:
             orig_dist_names.append(field.name) #Creats a list that has the original field names that describe the district the polygons are in
     odn=orig_dist_names #An alias
     
@@ -294,6 +297,16 @@ def main(*args):
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
         arcerror2("")
     
+
+    ## Where Amy's code edits end.
+    
+    Cur_P_List = []
+    Cur_P_List.extend(p_list[dist1-1])
+    Cur_P_List.extend(p_list[dist2-1])
+    Cur_P_List.sort()
+    
+    arcprint("Before Recom Dist1 and Dist2 have a combined ({0} + {1}) {2} precints: {3}", len(p_list[dist1-1]), len(p_list[dist2-1]), len(Cur_P_List))
+    
     G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
     popnum = {} #Initializes a dictionary that will contain the population for each polygon
@@ -320,12 +333,23 @@ def main(*args):
         distnum = dict(stateG.nodes("District Number"))
     if popnum == {}:
         popnum = dict(stateG.nodes("Population"))
-    
+        
+    Moving_P_List = []
     #Finds nodes that are in district 1 or district 2
     for v in distnum:
         if distnum[v]==dist1 or distnum[v]==dist2:
             nodes_for_G.append(v)
-
+            Moving_P_List.append(v)
+    Moving_P_List.sort()
+    arcprint("Number of nodes in this Graph (before subgraphs) #:{0}", len(Moving_P_List))
+    
+    if Moving_P_List == Cur_P_List:
+        arcprint("We have the correct precincts for our subgraphs.")
+    elif len(Moving_P_List) == len(Cur_P_List) :
+        arcprint("We DO NOT have the correct precincts, but we have the correct number, {0}", len(Moving_P_List))
+    elif len(Moving_P_List) != len(Cur_P_List) :
+        arcprint("We have {0} more precincts in the subgraphs than we are supposed to", len(Moving_P_List) - len(Cur_P_List))
+            
     G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
     
     #arcprint("Vertices of G are {0}",sorted(G.nodes))
@@ -372,6 +396,7 @@ def main(*args):
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
+                SG_KEY_FIRST = dist1
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist2
                 distnum[i] = dist2
@@ -381,6 +406,7 @@ def main(*args):
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist2
                 distnum[i] = dist2
+                SG_KEY_FIRST = dist2
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
@@ -394,11 +420,19 @@ def main(*args):
         with arcpy.da.UpdateCursor(shapefile, [sf_name_field,"temp_dist"]) as cursor:
             for row in cursor: 
                 if row[0] in subgraphs[0]:
-                    row[1] = 1
-                    Subgraph1Count += 1
+                    if SG_KEY_FIRST == dist1 :
+                        row[1] = 1
+                        Subgraph1Count += 1
+                    else :
+                        row[1] = 2
+                        Subgraph2Count += 1
                 elif row[0] in subgraphs[1]:
-                    row[1] = 2
-                    Subgraph2Count += 1
+                    if SG_KEY_FIRST == dist2 :
+                        row[1] = 1
+                        Subgraph1Count += 1
+                    else :
+                        row[1] = 2
+                        Subgraph2Count += 1
                 elif (row[0] not in subgraphs[0]) and (row[0] not in subgraphs[1]):
                     row[1] = 0
                     DontMoveCount += 1
@@ -408,7 +442,7 @@ def main(*args):
         arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
     #Returns values if this script was called by another script
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists)
+        return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists,neighbor_list)
 
 if __name__ == "__main__":
     main()
