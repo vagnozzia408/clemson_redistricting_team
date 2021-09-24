@@ -21,9 +21,9 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
     arcprint("Number of precints currently in all districts")
     for i in range(7):
         if i == dist1 - 1:
-            print("DIST1: ")
+            arcprint("DIST1: ")
         elif i == dist2 - 1: 
-            print("DIST2: ")
+            arcprint("DIST2: ")
         arcprint(np.ndarray.sum(Matrix[i]))
     dist1OrigPre = 0
     dist2OrigPre = 0
