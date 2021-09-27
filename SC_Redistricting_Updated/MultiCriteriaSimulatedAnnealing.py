@@ -29,7 +29,7 @@ import random
 seed = 1743
 random.seed(seed)
 import CreateSpanningTree
-import FindBoundaryShapes
+import CreateNeighborList
 import networkx as nx
 import GraphMeasures
 import County_Intersections
@@ -84,19 +84,7 @@ def Flip():
                 with arcpy.da.UpdateCursor(out_table, [NameField, DistField, PopField],"{0} = '{1}'".format(NameField,randshape)) as cursor:
                     for row in cursor:
                         row[1] = currdist
-                        cursor.updateRow(row)'''
-
-#def AddDistField(in_table):
-#    lstFields = arcpy.ListFields(in_table)
-#    DistField = "Dist_Assgn"
-#    x = False
-#    for field in lstFields:
-#        if field.name == "Dist_Assgn":
-#            x = True
-#    if x != True:
-#        arcprint("Field does not exist. Adding Dist_Assgn")
-#        arcpy.AddField_management(in_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
-#    return(DistField)    
+                        cursor.updateRow(row)''' 
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
     """Returns a single positive integer that sums each district's deviation from the ideal population. Lower numbers for 'deviation' are better. A value of zero would indicate that every district has an equal number of people"""
@@ -107,45 +95,10 @@ def DeviationFromIdealPop(sumpop,idealpop,distcount):
     deviation_ = sum(absdev)
     deviation_ = round(deviation_)
     return(deviation_)
-        
-#def FindBoundaryShapes(in_table,neighbor_list):
-#    if neighbor_list == None:
-#        uniquename = arcpy.CreateUniqueName(in_table + "_neighbor_list")
-#        arcpy.PolygonNeighbors_analysis(in_table, uniquename,None,None,None,None,"KILOMETERS")
-
-#%%NO LONGER USED   
-def FindNamingFields(in_table):
-    lstFields = arcpy.ListFields(in_table)
-    namefields=[]
-    distfields=[]
-    breakflag=0
-    for name in ["GEOID20", "OBJECTID", "FID", "SOURCE_ID"]:
-        for field in lstFields:   
-            if name ==field.name:
-                namefields.append(name)
-                breakflag=1
-                break
-        if breakflag==1:
-            break
-    #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
-    breakflag=0
-    for name in ["CLUSTER_ID", "Dist_Assgn"]:
-        for field in lstFields:
-            if name == field.name:
-                distfields.append(name)
-                breakflag=1
-                break
-        if breakflag==1:
-            break
-    return(namefields,distfields)
-    
-#def ComputeHypComp(dist1, dist2, outDistrictStats):
-#    DistrictStats = GraphMeasures.PolsbyPopperUpdate(dist1,dist2,out_table, path, DistrictStats)
-#    return(DistrictStats)
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, precinct_list):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -169,18 +122,18 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             objid= row[0]
             row[1] = stateG.nodes[objid]["District Number"]
             cursor.updateRow(row)
-    precinct_list[dist1-1] = []
-    precinct_list[dist2-1] = []
+    geo_unit_list[dist1-1] = []
+    geo_unit_list[dist2-1] = []
     with arcpy.da.SearchCursor(out_table,["SOURCE_ID", DistField], '''{}={} OR {}={}'''.format(DistField,dist1,DistField,dist2)) as cursor:
         for row in cursor:
             if row[1] == dist1:
-                precinct_list[dist1-1].append(row[0])
+                geo_unit_list[dist1-1].append(row[0])
             elif row[1] == dist2:
-                precinct_list[dist2-1].append(row[0])
+                geo_unit_list[dist2-1].append(row[0])
             else :
-                print("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    precinct_list[dist1-1].sort()
-    precinct_list[dist2-1].sort()
+                arcprint("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    geo_unit_list[dist1-1].sort()
+    geo_unit_list[dist2-1].sort()
     DistrictStats[dist1-1].ConfirmStats(True)
     DistrictStats[dist2-1].ConfirmStats(True)
     MapStats.ConfirmMapStats(True)
@@ -196,7 +149,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
-    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, precinct_list)
+    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list)
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -278,7 +231,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=50
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -311,7 +264,7 @@ def main(*args):
     
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
     #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
-    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + "_TryingToFixPrecincts"
+    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" 
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 
     #Using Spatially Constrained Multivariate Clustering instead of BBZ to create a random starting district
@@ -348,31 +301,25 @@ def main(*args):
         arcpy.AddField_management(out_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
     DistField="Dist_Assgn"
 
-    #FindBoundaryShapes.main(out_table)
-    #global neighbor_list
-    #neighbor_list = out_table + "_nbr_list"
-    neighbor_list = FindBoundaryShapes.main(out_table)
+    #Runs CreateNeighborList and returns the name of the neighbor_list
+    neighbor_list = CreateNeighborList.main(out_table)
 
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
-    precinct_list = [[ ] for d in range(distcount)]
-    arcprint(precinct_list)
+    geo_unit_list = [[ ] for d in range(distcount)]
+    arcprint(geo_unit_list)
     # Copies all CLUSTER_ID's into Dist_Assgn
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County","County_Num"]) as cursor:
         for row in cursor:
-            row[0] = row[1]
-            row[4] = int(row[3])
-            precinct_list[row[0]-1].append(row[2])
+            row[0] = row[1] #Dist_Assgn = CLUSTER_ID
+            row[4] = int(row[3]) #County_Num = County
+            geo_unit_list[row[0]-1].append(row[2])
             cursor.updateRow(row)
-    count = 0
-    for plist in precinct_list:
-        count += 1
-        plist.sort()
-        arcprint("At the start, the total number of precincts in District{0} is {1}.", count, len(plist))
-    
-    #Creates the neighbor list
-    FindBoundaryShapes.main(out_table)
-    neighbor_list = out_table + "_nbr_list"
+    ucount = 0
+    for unit in geo_unit_list:
+        ucount += 1
+        unit.sort()
+        arcprint("At the start, the total number of geographic units in District{0} is {1}.", ucount, len(unit))
     
     #Finds sum of each district population
     sumpop=[]
@@ -383,9 +330,8 @@ def main(*args):
             i = row[1]-1
             i = int(i)
             sumpop[i] = row[0] + sumpop[i]
-    arcprint("The sum of polygon populations (i.e. sumpop) is {0}.",sumpop)
-    idealpop=sum(sumpop)/distcount    
-    
+    idealpop=sum(sumpop)/distcount
+    arcprint("The sum of unit populations (i.e. sumpop) is {0}. Thus, the ideal population for a district is {1}.",sumpop,idealpop)
     
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField) #Populates DistrictStats and MapStats using GraphMeasures
     comp = [o.ppCompactScore for o in DistrictStats]    #comp is a list of compactness scores
@@ -397,7 +343,7 @@ def main(*args):
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}", fair)
     arcprint("CDI_Count = {0}", CDI_Count)
-    arcprint("Total number of precints (calculated by np.sum(units_in_CDI)) = {0}", np.sum(units_in_CDI))
+    arcprint("Total number of precincts (calculated by np.sum(units_in_CDI)) = {0}", np.sum(units_in_CDI))
     arcprint("CDI_Square = {0}", CDI_Square)
     
     #Creates vectors of zeros that will hold values for population deviation, average compactness, etc.
@@ -452,7 +398,7 @@ def main(*args):
             dist2 = random.randint(1,distcount)
         arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
         try:
-            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, precinct_list)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count -= 1
@@ -485,27 +431,25 @@ def main(*args):
 #                    arcprint("SOMETHING IS WRONG!")
 #        arcprint("Number of precincts in: TempDist1 = {0}, TempDist2 = {1}, NotGonnaMove = {2}, So the total number of precincts is: {3}", TempDist1, TempDist2, NotGonnaMove,  TempDist1 +TempDist2 + NotGonnaMove)
             
-        
+        #Populates entries of hypothetical population sum (hypsumpop) with the proposed dist1 and dist2 populations
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
-        deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount)
+        deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount) #Calculates the absolute deviation from ideal for this proposed change. 
         
         DistrictStats = GraphMeasures.DistrictUpdateForHyp(dist1,dist2, out_table,path, DistrictStats)
-        hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of compactness scores
+        hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of hypothetical compactness scores
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
         
         MapStats.UpdateHypMapStats(DistrictStats)
         fairscore[count] = abs(MapStats.HypMedianMean)
         r_fairscore[count] = MapStats.HypMedianMean
         
-        #[units_in_CDI, CDI_Count] = County_Intersections.main(out_table, distcount, DistField)
         #CDI_Count_vals[count] = CDI_Count
         [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
         CDI_Count_vals[count] = CDI_Count
         CDI_Square_vals[count] = CDI_Square
-        arcprint("Total number of precints = {0} (should not have changed) line 521", np.sum(units_in_CDI))
-        
-        #arcprint("absolute deviation is {0}",deviation[count])    
+        arcprint("Total number of precincts = {0} (should not have changed) line 521", np.sum(units_in_CDI))
+           
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count-1] - avgcomp[count]
         DeltaE_fair = fairscore[count] - fairscore[count-1]
@@ -527,16 +471,12 @@ def main(*args):
             if norm[i] == 0:
                 norm[i]=1
         #Calculates DeltaE based on each of the metrics_
-        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1]
-        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2]
-        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3]
         DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_square*alpha[4]/norm[4]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         
         if DeltaE <0: #An improvement!
-            #[T,sumpop,stateG,neighbor_list,DistrictStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, precinct_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, precinct_list)
+            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -550,7 +490,7 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 #[T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,precinct_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,precinct_list)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -562,6 +502,7 @@ def main(*args):
                 DistrictStats[dist2-1].ConfirmStats(False)
                 MapStats.ConfirmMapStats(False)
                 temp_units_in_CDI = np.zeros([2,46], dtype=int)
+                
                 
         
     arcprint("\n")
