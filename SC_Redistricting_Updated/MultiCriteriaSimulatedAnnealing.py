@@ -231,7 +231,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=50
+            MaxIter=10
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
