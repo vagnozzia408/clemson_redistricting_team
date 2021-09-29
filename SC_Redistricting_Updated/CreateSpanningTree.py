@@ -29,8 +29,8 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os, sys
 import random
-seed = 1743
-random.seed(seed)
+#seed = 1743
+#random.seed(seed)
 #from random import randint
 import networkx as nx
 #from openpyxl import load_workbook
@@ -93,17 +93,17 @@ def wilson(graph, rng):
 
     return uniformTree
 
-def FindEdgeCut(tree,tol,criteria):
+def FindEdgeCut(tree,tol,criteria,idealpop):
     '''Input a tree graph, a percent tolerance, and a criteria for the graph. The function will remove a 
     random edge that splits the tree into two pieces such that each piece 
     has criteria (like population) within that percent tolerance. The variable 'tol' should be a positive real 
     number in (0,100]. The criteria should be string that labels an attribute of the nodes of the tree.'''
     if tol > 100 or tol <=0 or (isinstance(tol,float)==False and isinstance(tol,int)==False): 
-        arcerror("tol must be a float or integer variable in the range (0,100].")
+        arcerror2("tol must be a float or integer variable in the range (0,100].")
     if nx.is_tree(tree) == False:
-        arcerror("The input graph must be a tree.")
+        arcerror2("The input graph must be a tree.")
     if isinstance(criteria,str)==False:
-        arcerror("The criteria input should be a string.")
+        arcerror2("The criteria input should be a string.")
     tree_edge_list = list(tree.edges)
     random.shuffle(tree_edge_list) #Randomly shuffles the edges of T
     e=None
@@ -112,25 +112,27 @@ def FindEdgeCut(tree,tol,criteria):
     for i in range(TELL):
         e = tree_edge_list[i] #Edge to delete
         tree.remove_edge(*e)
-        #arcprint("The edges of T are now {0}. We just deleted {1}.",tree.edges,e)
+#        arcprint("The edges of T are now {0}. We just deleted {1}.",tree.edges,e)
         subgraphs = nx.connected_components(tree)
         subgraphs_lst = list(subgraphs)
         subgraphs_lst[0] = sorted(subgraphs_lst[0])
         subgraphs_lst[1] = sorted(subgraphs_lst[1])
-        #arcprint("The subgraph candidates are {0}.",subgraphs_lst)
+#        arcprint("The subgraph candidates are {0}.",subgraphs_lst)
         dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
         dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
 #        if criteria == "Population":
 #            total_crit = 2*idealpop
 #        else:
+#            pass
         total_crit= dist_crit1+dist_crit2
-        if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2):
+        if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2) or abs(dist_crit2 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
         else:
-            #arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
+#            arcprint("Criteria requirement was met. Removing edge {0}. Required {1} iteration(s).\nThe two subgraphs are {2}, with {3} of {4} and {5}, respectively.",e,i+1,subgraphs_lst,criteria,int(dist_crit1),int(dist_crit2))
+            arcprint("Population requirement was met. Removing edge {0}. Required {1} iteration(s).",e,i+1)
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
-            arcprint("No subgraphs with appropriate criteria requirements were found.\n")
+            arcprint("No subgraphs with appropriate criteria requirements were found. Required {0} iterations.\n",i+1)
             return(float('inf'), float('inf'),[]) 
 
 def arcprint(message,*variables):
@@ -206,7 +208,7 @@ def main(*args):
         dist2=int(sys.argv[7])
         stateG = sys.argv[8]
         p_list = sys.argv[9]
-        #idealpop=float(sys.argv[7])
+        idealpop=float(sys.argv[10])
         del stateG #We can't insert a graph from the ArcGIS input line
         arcprint("Running CreateSpanningTree from command line arguments")
     except IndexError: 
@@ -220,18 +222,28 @@ def main(*args):
             dist2 = int(args[6])
             stateG = args[7]
             p_list = args[8]
-            #idealpop = args[8]
-            arcprint("Running CreateSpanningTree using input from another script")
+            idealpop = args[9]
+#            arcprint("Running CreateSpanningTree using input from another script")
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-            sf_pop_field = "SUM_Popula"
+#            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+#            sf_pop_field = "SUM_Popula"
+#            sf_name_field = "OBJECTID"
+#            tol=30
+#            neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
+#            dist1=6
+#            dist2=4
+#            p_list = [[]] * 7
+#            idealpop = 717252
+            
+            shapefile=path+"\\Precincts_2020_SA_7dists"
+            sf_pop_field = "Precinct_P"
             sf_name_field = "OBJECTID"
             tol=30
-            neighbor_list=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1_neighbor_list_shapes"
+            neighbor_list=path+"\\Precincts_2020_SA_7dists_nbr_list"
             dist1=6
-            dist2=4
+            dist2=1
             p_list = [[]] * 7
-            #idealpop = 717252
+            idealpop = 717252
             arcprint("Running CreateSpanningTree using default input choices")
 
     #arcprint("sf_pop_field is {0} and is type {1}",sf_pop_field, type(sf_pop_field))
@@ -296,16 +308,15 @@ def main(*args):
     if AdjFlag==0: 
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
         arcerror2("")
-    
 
     ## Where Amy's code edits end.
     
-    Cur_P_List = []
-    Cur_P_List.extend(p_list[dist1-1])
-    Cur_P_List.extend(p_list[dist2-1])
-    Cur_P_List.sort()
+#    Cur_P_List = []
+#    Cur_P_List.extend(p_list[dist1-1])
+#    Cur_P_List.extend(p_list[dist2-1])
+#    Cur_P_List.sort()
     
-    arcprint("Before Recom Dist1 and Dist2 have a combined ({0} + {1}) {2} precints: {3}", len(p_list[dist1-1]), len(p_list[dist2-1]), len(Cur_P_List))
+    #arcprint("Before Recom Dist1 and Dist2 have a combined ({0} + {1}) {2} precincts: {3}", len(p_list[dist1-1]), len(p_list[dist2-1]), len(Cur_P_List))
     
     G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
@@ -341,14 +352,14 @@ def main(*args):
             nodes_for_G.append(v)
             Moving_P_List.append(v)
     Moving_P_List.sort()
-    arcprint("Number of nodes in this Graph (before subgraphs) #:{0}", len(Moving_P_List))
+#    arcprint("Number of nodes in this Graph (before subgraphs) #:{0}", len(Moving_P_List))
     
-    if Moving_P_List == Cur_P_List:
-        arcprint("We have the correct precincts for our subgraphs.")
-    elif len(Moving_P_List) == len(Cur_P_List) :
-        arcprint("We DO NOT have the correct precincts, but we have the correct number, {0}", len(Moving_P_List))
-    elif len(Moving_P_List) != len(Cur_P_List) :
-        arcprint("We have {0} more precincts in the subgraphs than we are supposed to", len(Moving_P_List) - len(Cur_P_List))
+#    if Moving_P_List == Cur_P_List:
+#        arcprint("We have the correct precincts for our subgraphs.")
+#    elif len(Moving_P_List) == len(Cur_P_List) :
+#        arcprint("We DO NOT have the correct precincts, but we have the correct number, {0}", len(Moving_P_List))
+#    elif len(Moving_P_List) != len(Cur_P_List) :
+#        arcprint("We have {0} more precincts in the subgraphs than we are supposed to", len(Moving_P_List) - len(Cur_P_List))
             
     G = stateG.subgraph(nodes_for_G) #Finds a subgraph containing all adjacencies for vertices in the two districts
     
@@ -371,8 +382,8 @@ def main(*args):
     else:
         nx.set_node_attributes(T,dict(G.nodes("District Number")),"District Number")
         
-    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
-    
+#    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
+    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population",idealpop) #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     
     #This next section of code decides which subgraph should become district 1 and which should become district 2
     if dist1_pop!=float('inf') and dist2_pop!=float('inf'):
@@ -400,7 +411,7 @@ def main(*args):
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist2
                 distnum[i] = dist2
-            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
+#            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
         
         else:
             for i in subgraphs[0]:
@@ -410,10 +421,10 @@ def main(*args):
             for i in subgraphs[1]:
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
-            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
+#            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist2,dist1)
         
-        arcprint("Updating temp_dist in CreateSpanningTree.py...")
-        arcprint("The subgraphs have {0} and {1} precincts.", len(subgraphs[0]), len(subgraphs[1]))
+#        arcprint("Updating temp_dist in CreateSpanningTree.py...")
+#        arcprint("The subgraphs have {0} and {1} precincts.", len(subgraphs[0]), len(subgraphs[1]))
         Subgraph1Count = 0
         Subgraph2Count = 0
         DontMoveCount = 0
@@ -439,7 +450,8 @@ def main(*args):
                 else:
                     arcerror2("{0} is not assigned a proper district...", row[0])
                 cursor.updateRow(row)
-        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
+#        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
+    
     #Returns values if this script was called by another script
     if __name__ != "__main__":
         return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists,neighbor_list)

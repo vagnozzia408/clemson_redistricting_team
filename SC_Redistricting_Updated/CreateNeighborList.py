@@ -6,7 +6,7 @@ Created on Thu May  6 17:21:17 2021
 """
 import arcpy, os, sys
 
-#FindNamingFields finds all fields that name or label a shape. 
+#FindNamingFields finds a field that names or labels a shape. 
 def FindNamingFields(in_table):
     lstFields = arcpy.ListFields(in_table)
     namefield = None
@@ -20,6 +20,8 @@ def FindNamingFields(in_table):
                 break
         if breakflag==1:
             break
+    if namefield == None:
+        arcerror("No value for namefield was found.")
     #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
     breakflag=0
 
@@ -31,6 +33,8 @@ def FindNamingFields(in_table):
                 break
         if breakflag==1:
             break
+    if distfield ==None:
+        arcerror("No value for distfield was found. All polygons must be assigned a district in a field labeled 'CLUSTER_ID' or 'ZONE_ID'.")
     return(namefield,distfield)
 
 def MakeSQLExpression(in_row, fields4nbrlist):          
@@ -106,10 +110,10 @@ def main(*args):
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
-            arcprint("Running FindBoundaryShapes using input from another script")
+            arcprint("Running CreateNeighborList using input from another script")
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            in_table = path + "\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
-            arcprint("We are using default input choices")
+            in_table = path + "\\Precincts_2020"
+            arcprint("Running CreateNeighborList using default input choices")
     
     #Finds the name field and distfield for the in_table
     [namefield,distfield] = FindNamingFields(in_table)

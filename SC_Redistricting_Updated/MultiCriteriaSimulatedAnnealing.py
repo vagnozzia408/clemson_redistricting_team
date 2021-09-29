@@ -18,7 +18,7 @@ Created on Thu Apr 15 16:52:28 2021
 #7. Need to generalize odn stuff
 #8. Consider adjusting smallest possible temperature
 #9. Determine how to add a map to the contents pane if and only if it is not already there.
-#10. Make this code create its own neighbor list
+"#10. Make this code create its own neighbor list --- DONE. Uses CreateNeighborList (Blake)"
 #11. Consider appending population field and custom naming field to out_table
 #12. Add timers to time sections of code
 #13. Reconsider starting temperatures
@@ -26,8 +26,8 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-seed = 1743
-random.seed(seed)
+#seed = 1743
+#random.seed(seed)
 import CreateSpanningTree
 import CreateNeighborList
 import networkx as nx
@@ -131,7 +131,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             elif row[1] == dist2:
                 geo_unit_list[dist2-1].append(row[0])
             else :
-                arcprint("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                arcerror("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     geo_unit_list[dist1-1].sort()
     geo_unit_list[dist2-1].sort()
     DistrictStats[dist1-1].ConfirmStats(True)
@@ -143,10 +143,10 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
-    arcprint("Total number of precincts = {0} (calculated by np.sum(units_in_CDI, inside acceptchange, line 177)", np.sum(units_in_CDI))
+    #arcprint("Total number of precincts = {0} (calculated by np.sum(units_in_CDI, inside acceptchange, line 177)", np.sum(units_in_CDI))
        
     #arcprint("The fairness scores for this map are: Median_Mean = {0}", MapStats.MedianMean)
-    arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
+    #arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
     return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list)
@@ -231,12 +231,12 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=50
+            MaxIter=100
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
-            maxstopcounter=100
+            maxstopcounter=50
             arcprint("We are using default input choices")
     
     #Marking the start time of the run.
@@ -251,8 +251,10 @@ def main(*args):
 #    tot = sum(alpha)
 #    for i in range(metric_count):
 #        alpha[i] = alpha[i]/tot
-    alpha = [0.7, 0.15, 0, 0.075, 0.075]
+    alpha = [1, 0, 0, 0, 0]
     arcprint("alpha = {0}",alpha)
+    if sum(alpha) !=1:
+        arcerror("The elements of alpha must sum to 1.")
         
     #Normalizing factor
     prev_DeltaE = np.zeros([5,metric_count],dtype=float)
@@ -319,7 +321,7 @@ def main(*args):
     for unit in geo_unit_list:
         ucount += 1
         unit.sort()
-        arcprint("At the start, the total number of geographic units in District{0} is {1}.", ucount, len(unit))
+        #arcprint("At the start, the total number of geographic units in District{0} is {1}.", ucount, len(unit))
     
     #Finds sum of each district population
     sumpop=[]
@@ -389,16 +391,23 @@ def main(*args):
     stopcounter=0 #The number of consecutive iterations in which a change was NOT made
     
     while T>0.1 and count<MaxIter and stopcounter<maxstopcounter:
-        arcprint("\ncount = {0}. About to add 1.",count)
+        if count==round(MaxIter/2) and stopcounter==0:
+            tol = tol/2
+        if count==round(3*MaxIter/4) and stopcounter==0:
+            tol = tol/2
+        if count==round(7*MaxIter/8) and stopcounter==0:
+            tol = tol/2
+        arcprint("\ncount = {0}. About to add 1. stopcounter={1}. If this gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
         count = count+1
         dist1 = random.randint(1,distcount)
         dist2 = random.randint(1,distcount)
-        while dist1==dist2: #Randomly selects two different districts
+        #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
+        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])): 
             dist1 = random.randint(1,distcount)
             dist2 = random.randint(1,distcount)
-        arcprint("dist1 = {0} and dist2 = {1}.", dist1,dist2)
+        arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         try:
-            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count -= 1
@@ -448,7 +457,6 @@ def main(*args):
         [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
         CDI_Count_vals[count] = CDI_Count
         CDI_Square_vals[count] = CDI_Square
-        arcprint("Total number of precincts = {0} (should not have changed) line 521", np.sum(units_in_CDI))
            
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count-1] - avgcomp[count]
@@ -473,7 +481,6 @@ def main(*args):
         #Calculates DeltaE based on each of the metrics_
         DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_square*alpha[4]/norm[4]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
-        
         
         if DeltaE <0: #An improvement!
             [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list)
@@ -519,7 +526,7 @@ def main(*args):
     arcprint("Original CDI_Square Score = {0}. Final CDI_Square Score = {1}",CDI_Square_vals[0],CDI_Square_vals[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
-    arcprint("The relative value assigned to the metrics was: Pop: {0}, Compactness: {1}, MM: {2}, Counties: {3}", alpha[0],alpha[1],alpha[2],alpha[3])
+    arcprint("The relative value assigned to the metrics was: Pop: {0}, Compactness: {1}, MM: {2}, Counties: {3}, Excess_polygons: {4}", alpha[0],alpha[1],alpha[2],alpha[3],alpha[4])
     
     #Repopulates stateG if it was emptied during a rejection step in the algorithm
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
