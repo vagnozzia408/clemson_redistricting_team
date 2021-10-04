@@ -4,9 +4,6 @@ Created on Thu Apr 15 16:52:28 2021
 
 @author: Blake Splitter
 """
-### IMPORTANT ASSUMPTION: WE ASSUME THAT THE FIRST COLUMN OF THE FEATURE LAYER
-### IS AN ID COLUMN THAT UNIQUELY LABELS EACH ROW WITH THE NUMBERS 1-X, WHERE
-### X IS THE NUMBER OF ROWS
 
 #TO DO LIST
 "#1. Change argv stuff --- DONE (Blake)"
@@ -26,8 +23,8 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-#seed = 1743
-#random.seed(seed)
+seed = 1743
+random.seed(seed)
 import CreateSpanningTree
 import CreateNeighborList
 import networkx as nx
@@ -256,6 +253,8 @@ def main(*args):
     if sum(alpha) !=1:
         arcerror("The elements of alpha must sum to 1.")
         
+    origtol = tol
+        
     #Normalizing factor
     prev_DeltaE = np.zeros([5,metric_count],dtype=float)
     norm = [0]*metric_count
@@ -279,6 +278,8 @@ def main(*args):
             cursor.updateRow(row)
     arcprint("Running Spatially Constrained Multivariate Clustering...")
     arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
+    ###NEED TO ADDRESS ExecuteError where it can't find district with max/min constraints
+    
     
     #Adds populations as a column in out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
@@ -392,19 +393,24 @@ def main(*args):
     
     while T>0.1 and count<MaxIter and stopcounter<maxstopcounter:
         if count==round(MaxIter/2) and stopcounter==0:
-            tol = tol/2
+            tol = origtol/2
         if count==round(3*MaxIter/4) and stopcounter==0:
-            tol = tol/2
+            tol = origtol/4
         if count==round(7*MaxIter/8) and stopcounter==0:
-            tol = tol/2
+            tol = origtol/8
         arcprint("\ncount = {0}. About to add 1. stopcounter={1}. If this gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
         count = count+1
         dist1 = random.randint(1,distcount)
         dist2 = random.randint(1,distcount)
+        whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
         while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])): 
             dist1 = random.randint(1,distcount)
             dist2 = random.randint(1,distcount)
+            whilecount+=1
+            if whilecount % 100 ==0:
+                arcprint("*heavy sigh*")
+                arcprint(whilecount)
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         try:
             [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
@@ -509,7 +515,7 @@ def main(*args):
                 DistrictStats[dist2-1].ConfirmStats(False)
                 MapStats.ConfirmMapStats(False)
                 temp_units_in_CDI = np.zeros([2,46], dtype=int)
-                
+        arcprint("Total population in SC is {0}",sum(sumpop))
                 
         
     arcprint("\n")
