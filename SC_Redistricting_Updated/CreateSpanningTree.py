@@ -383,10 +383,11 @@ def main(*args):
         nx.set_node_attributes(T,dict(G.nodes("District Number")),"District Number")
         
 #    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
-    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population",idealpop) #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
-    
+    [sub0_pop, sub1_pop,subgraphs] = FindEdgeCut(T,tol,"Population",idealpop) #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
+    dist1_pop = 0
+    dist2_pop = 0
     #This next section of code decides which subgraph should become district 1 and which should become district 2
-    if dist1_pop!=float('inf') and dist2_pop!=float('inf'):
+    if sub0_pop!=float('inf') and sub1_pop!=float('inf'):
         s0d1count=0
         s0d2count=0
         s1d1count=0
@@ -404,6 +405,8 @@ def main(*args):
         
         #Assigns either dist1 or dist2 to the changed polygons
         if s0d1count + s1d2count >= s0d2count + s1d1count:
+            dist1_pop = sub0_pop
+            dist2_pop = sub1_pop
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist1
                 distnum[i] = dist1
@@ -414,6 +417,8 @@ def main(*args):
 #            arcprint("Subgraph 0 is the new district {0} and subgraph 1 is the new district {1}",dist1,dist2)
         
         else:
+            dist1_pop = sub1_pop
+            dist2_pop = sub0_pop
             for i in subgraphs[0]:
                 stateG.nodes[i]["District Number"] = dist2
                 distnum[i] = dist2

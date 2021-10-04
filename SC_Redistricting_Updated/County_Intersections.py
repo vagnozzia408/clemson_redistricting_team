@@ -103,7 +103,7 @@ def main(*args):
     #Squares each entry of the matrix and adds them all together
     CDI_Square = np.sum(np.square(units_in_CDI))
     
-    arcprint("units_in_CDI = {0}",units_in_CDI)
+    #arcprint("units_in_CDI = {0}",units_in_CDI)
     
     return(units_in_CDI,CDI_Count,CDI_Square)
     

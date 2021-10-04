@@ -86,10 +86,14 @@ def Flip():
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
     """Returns a single positive integer that sums each district's deviation from the ideal population. Lower numbers for 'deviation' are better. A value of zero would indicate that every district has an equal number of people"""
     absdev = [0 for i in range(distcount)]
+    sqrdev = [0 for i in range(distcount)]
     
     for i in range(distcount):
         absdev[i] = abs(sumpop[i]-idealpop)
-    deviation_ = sum(absdev)
+        sqrdev[i] = pow(sumpop[i]-idealpop, 2)
+    #deviation_ = sum(absdev)
+    #deviation_ = round(deviation_)
+    deviation_ = sum(sqrdev)
     deviation_ = round(deviation_)
     return(deviation_)
     
@@ -135,8 +139,8 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     DistrictStats[dist2-1].ConfirmStats(True)
     MapStats.ConfirmMapStats(True)
     
-    units_in_CDI[dist1-1] = temp_units_in_CDI[0]
-    units_in_CDI[dist2-1] = temp_units_in_CDI[1]
+    units_in_CDI[dist1-1] = temp_units_in_CDI[0].copy()
+    units_in_CDI[dist2-1] = temp_units_in_CDI[1].copy()
     
     temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
@@ -228,7 +232,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=100
+            MaxIter=10
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -412,6 +416,7 @@ def main(*args):
                 arcprint("*heavy sigh*")
                 arcprint(whilecount)
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
+        arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
         try:
             [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
@@ -515,6 +520,7 @@ def main(*args):
                 DistrictStats[dist2-1].ConfirmStats(False)
                 MapStats.ConfirmMapStats(False)
                 temp_units_in_CDI = np.zeros([2,46], dtype=int)
+                
         arcprint("Total population in SC is {0}",sum(sumpop))
                 
         
