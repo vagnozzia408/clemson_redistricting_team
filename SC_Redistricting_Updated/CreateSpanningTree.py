@@ -323,6 +323,7 @@ def main(*args):
     popnum = {} #Initializes a dictionary that will contain the population for each polygon
     
     if nx.is_empty(stateG)==True:
+        arcprint("Creating the stateG graph...")
         with arcpy.da.SearchCursor(shapefile,[sf_name_field,sf_pop_field]) as cursor:
             for row in cursor:
                 popnum[row[0]] = row[1] #Finds population of each polygon
@@ -336,7 +337,9 @@ def main(*args):
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[3] #distnum[src_OBJECTID] = src_dist
             del cursor
+        arcprint("Adding Population attribute")
         nx.set_node_attributes(stateG,popnum,"Population")
+        arcprint("Adding District Number attribute")
         nx.set_node_attributes(stateG,distnum,"District Number")
     nodes_for_G = []
 

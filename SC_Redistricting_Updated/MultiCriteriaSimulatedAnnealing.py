@@ -23,7 +23,7 @@ Created on Thu Apr 15 16:52:28 2021
 
 import arcpy,math,os,sys
 import random
-seed = 1743
+seed = 1738
 random.seed(seed)
 import CreateSpanningTree
 import CreateNeighborList
@@ -99,11 +99,27 @@ def DeviationFromIdealPop(sumpop,idealpop,distcount):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DNP):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
     arcprint("The change was accepted!")
+    
+    #Updates District Neighbor Pairs 
+    for d in DNP:
+        potpair = [0,0]
+        if d[0]==dist1:
+            potpair = sorted([dist2,d[1]])
+        elif d[0]==dist2:
+            potpair = sorted([dist1,d[1]])
+        elif d[1]==dist1:
+            potpair = sorted([dist2,d[0]])
+        elif d[1]==dist2:
+            potpair = sorted([dist1,d[0]])
+        if potpair[0]==potpair[1] or potpair in DNP:
+            continue
+        else:
+            DNP.append(potpair)
     
     #Updates the neighbor list table after each iteration
     #Note: nlf[3] = 'src_dist', nlf[4] = 'nbr_dist'
@@ -314,7 +330,7 @@ def main(*args):
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
     geo_unit_list = [[ ] for d in range(distcount)]
-    arcprint(geo_unit_list)
+    
     # Copies all CLUSTER_ID's into Dist_Assgn
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County","County_Num"]) as cursor:
         for row in cursor:
@@ -339,6 +355,16 @@ def main(*args):
             sumpop[i] = row[0] + sumpop[i]
     idealpop=sum(sumpop)/distcount
     arcprint("The sum of unit populations (i.e. sumpop) is {0}. Thus, the ideal population for a district is {1}.",sumpop,idealpop)
+    
+     #Finds the starting list of district neighbors
+    DistNbrList = out_table + "_dist_nbr_list"
+    DistNbrPairs = []
+    arcpy.analysis.PolygonNeighbors(out_table, DistNbrList, DistField,both_sides = "NO_BOTH_SIDES")
+    with arcpy.da.SearchCursor(DistNbrList, ["src_Dist_Assgn", "nbr_Dist_Assgn"], """{}<{}""".format("src_Dist_Assgn", "nbr_Dist_Assgn")) as cursor:
+        for row in cursor:
+            DistNbrPairs.append([row[0],row[1]])
+    arcprint("DistNbrPairs = {0}", DistNbrPairs)
+    
     
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField) #Populates DistrictStats and MapStats using GraphMeasures
     comp = [o.ppCompactScore for o in DistrictStats]    #comp is a list of compactness scores
@@ -404,17 +430,29 @@ def main(*args):
             tol = origtol/8
         arcprint("\ncount = {0}. About to add 1. stopcounter={1}. If this gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
         count = count+1
-        dist1 = random.randint(1,distcount)
-        dist2 = random.randint(1,distcount)
+#        dist1 = random.randint(1,distcount)
+#        dist2 = random.randint(1,distcount)
+#        if dist1 >dist2: #Orders the districts so that dist1 is smaller
+#            temp = dist2
+#            dist2 = dist1
+#            dist1 = temp
+        r= random.randint(0,len(DistNbrPairs)-1)
+        [dist1,dist2] = DistNbrPairs[r]
         whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
-        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])): 
-            dist1 = random.randint(1,distcount)
-            dist2 = random.randint(1,distcount)
+        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or [dist1,dist2] not in DistNbrPairs: 
+#            dist1 = random.randint(1,distcount)
+#            dist2 = random.randint(1,distcount)
+#            if dist1 >dist2:
+#                temp = dist2
+#                dist2 = dist1
+#                dist1 = temp
+            r= random.randint(0,len(DistNbrPairs)-1)
+            [dist1,dist2] = DistNbrPairs[r]
             whilecount+=1
             if whilecount % 100 ==0:
-                arcprint("*heavy sigh*")
-                arcprint(whilecount)
+                arcprint("We searched through {0} new district pairs and couldn't find any that met our criteria.",whilecount)
+                arcprint("sumpop = {0}",sumpop)
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
         try:
@@ -424,7 +462,7 @@ def main(*args):
             count -= 1
             stopcounter += 1
             continue
-        except SystemError: #Cuts the code if we encounter a SystemError in CreateSpanningTree
+        except SystemError: #Cuts the code if we encounter a SystemError in CreateSpanningTree (most likely caused by non-adjacent districts)
             arcprint("We had a system error. Selecting new districts")
             count -= 1
             stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
@@ -494,7 +532,7 @@ def main(*args):
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         if DeltaE <0: #An improvement!
-            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list)
+            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DistNbrPairs)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -508,7 +546,7 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 #[T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list,DistNbrPairs)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
