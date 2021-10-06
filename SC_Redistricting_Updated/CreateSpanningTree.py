@@ -462,7 +462,7 @@ def main(*args):
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists,neighbor_list)
+        return(dist1_pop, dist2_pop,stateG,G,nlf.copy(),prevdists,neighbor_list)
 
 if __name__ == "__main__":
     main()
