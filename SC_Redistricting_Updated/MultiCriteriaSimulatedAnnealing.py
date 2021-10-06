@@ -248,7 +248,7 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=100
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -388,6 +388,10 @@ def main(*args):
     CDI_Square_vals = [0]*(MaxIter+1)
     
     #Populates the zeroth entry for all vectors
+    startPopDev = 0
+    for i in range(distcount):
+         startPopDev += abs(sumpop[i]-idealpop)
+    arcprint("Starting Population Deviation is {0}", startPopDev)
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
     fairscore[0] = abs(fair)
@@ -569,7 +573,11 @@ def main(*args):
         arcprint("\nMaximum number of iterations reached. count = {0} and MaxIter = {1}", count, MaxIter)
     if stopcounter ==maxstopcounter:
         arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
-    arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
+    endPopDev = 0
+    for i in range(distcount):
+         endPopDev += abs(sumpop[i]-idealpop)
+    arcprint("Starting Population Deviation was {0}, and Ending Population Deviation is {1}", startPopDev, endPopDev)
+    #arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
     arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",r_fairscore[0],r_fairscore[count])
     arcprint("Original CDI_Count Score = {0}. Final CDI_Count Score = {1}",CDI_Count_vals[0],CDI_Count_vals[count])

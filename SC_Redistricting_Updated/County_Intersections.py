@@ -21,7 +21,7 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
             Temp_Matrix[d][i] = len(table_of_rows)
     hyp_count += np.count_nonzero(Temp_Matrix[0]) + np.count_nonzero(Temp_Matrix[1])
     hyp_square += np.ndarray.sum(np.square(Temp_Matrix[0])) + np.ndarray.sum(np.square(Temp_Matrix[1]))
-    return(hyp_count, Temp_Matrix,hyp_square) 
+    return(hyp_count, Temp_Matrix.copy(),hyp_square) 
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -105,7 +105,7 @@ def main(*args):
     
     #arcprint("units_in_CDI = {0}",units_in_CDI)
     
-    return(units_in_CDI,CDI_Count,CDI_Square)
+    return(units_in_CDI.copy(),CDI_Count,CDI_Square)
     
 #END FUNCTIONS    
 if __name__ == "__main__":
