@@ -99,7 +99,7 @@ def DeviationFromIdealPop(sumpop,idealpop,distcount):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DNP):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI, geo_unit_list,DNP):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -155,10 +155,11 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     DistrictStats[dist2-1].ConfirmStats(True)
     MapStats.ConfirmMapStats(True)
     
-    units_in_CDI[dist1-1] = temp_units_in_CDI[0].copy()
-    units_in_CDI[dist2-1] = temp_units_in_CDI[1].copy()
+#    units_in_CDI[dist1-1] = temp_units_in_CDI[0].copy()
+#    units_in_CDI[dist2-1] = temp_units_in_CDI[1].copy()
+    units_in_CDI = hyp_units_in_CDI
     
-    temp_units_in_CDI = np.zeros([2,46], dtype=int)
+#    temp_units_in_CDI = np.zeros([2,46], dtype=int)
     
     #arcprint("Total number of precincts = {0} (calculated by np.sum(units_in_CDI, inside acceptchange, line 177)", np.sum(units_in_CDI))
        
@@ -296,7 +297,7 @@ def main(*args):
         for row in cursor:
             row[0] = random.randint(1,100000)
             cursor.updateRow(row)
-    arcprint("Running Spatially Constrained Multivariate Clustering...")
+    arcprint("Running Spatially Constrained Multivariate Clustering to create initial starting map...")
     arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
     ###NEED TO ADDRESS ExecuteError where it can't find district with max/min constraints
     
@@ -507,7 +508,8 @@ def main(*args):
         r_fairscore[count] = MapStats.HypMedianMean
         
         #CDI_Count_vals[count] = CDI_Count
-        [CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
+        #[CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
+        [CDI_Count,CDI_Square,hyp_units_in_CDI] = County_Intersections.CountIntersections2(dist1,dist2,units_in_CDI,hypG)
         CDI_Count_vals[count] = CDI_Count
         CDI_Square_vals[count] = CDI_Square
            
@@ -536,7 +538,8 @@ def main(*args):
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         if DeltaE <0: #An improvement!
-            [T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DistNbrPairs)
+            #[T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DistNbrPairs)
+            [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -549,8 +552,8 @@ def main(*args):
                 arcerror("p was nan")
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                #[T,sumpop,stateG,neighbor_list,DistrictsStats] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats)
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list,DistNbrPairs)
+                #[T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list,DistNbrPairs)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
