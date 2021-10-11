@@ -19,13 +19,13 @@ infile = io.open(sys.argv[1],newline='')
 reader = csv.reader(infile)
 header = next(reader)
 
-# Read in SRC_PSN (line), NBR_PSN (line), Shape_Length (line), PSN (point), CLCKWS_IDX (point).
+# Read in SRC_PSN (line), NBR_PSN (line), Shared_Perim (line), PSN (point), CLCKWS_IDX (point).
 # TO DO: Adjust column numbers as needed.
 clockwise_data = [[eval(row[1]),eval(row[2]),eval(row[3]),eval(row[4]),eval(row[5])] for row in reader]
 infile.close()
 
 # TO DO: Make sure the total number of records matches the files generated in ArcMap.
-assert(len(clockwise_data)==2616120)
+assert(len(clockwise_data)==322635)
 
 ## TEST ##
 print("TEST: Clockwise precinct data read correctly...")
@@ -35,7 +35,7 @@ for i in range(5):
 print
 
 # We only care about instances where SRC_PSN and PSN are the same.
-# SRC_PSN is the soure precinct with respect to the line segment.
+# SRC_PSN is the source precinct with respect to the line segment.
 # PSN is the source precinct with respect to the point.
 
 # Clean the data frame to only keep instances where SRC_PSN == PSN.
@@ -95,7 +95,7 @@ for line in clockwise_data_cleaned:
         clockwise_dict[line_seg] = [CLCKWS_IDX]
         
 # TO DO: Set this assertion statement to the number of line segments.
-assert(len(clockwise_dict)==16440)
+assert(len(clockwise_dict)==14702)
 
 ## TEST ##
 print("TEST: Clockwise dictionary created properly...")
