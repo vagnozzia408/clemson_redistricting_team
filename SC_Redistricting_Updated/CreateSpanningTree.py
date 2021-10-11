@@ -307,7 +307,7 @@ def main(*args):
 
     if AdjFlag==0: 
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
-        arcerror2("")
+        arcerror2("Districts {0} and {1} are not adjacent.",dist1, dist2)
 
     ## Where Amy's code edits end.
     
@@ -321,8 +321,10 @@ def main(*args):
     G = nx.Graph() #Creates an empty graph that will contain adjacencies for the two districts
     distnum = {} #Initializes a dictionary that will contain the district number for each polygon
     popnum = {} #Initializes a dictionary that will contain the population for each polygon
+    countynum = {} #Initializes a dictionary that will contain the county number for each polygon
     
     if nx.is_empty(stateG)==True:
+        arcprint("Creating the stateG graph for the first time...")
         with arcpy.da.SearchCursor(shapefile,[sf_name_field,sf_pop_field]) as cursor:
             for row in cursor:
                 popnum[row[0]] = row[1] #Finds population of each polygon
@@ -336,8 +338,18 @@ def main(*args):
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[3] #distnum[src_OBJECTID] = src_dist
             del cursor
+        with arcpy.da.SearchCursor(shapefile,[sf_name_field,"County"]) as cursor:
+            for row in cursor:
+                cursor.reset
+                countynum[row[0]] = row[1] #Finds county number for each polygon
+                del row
+            del cursor
+        arcprint("Adding Population attribute")
         nx.set_node_attributes(stateG,popnum,"Population")
+        arcprint("Adding District Number attribute")
         nx.set_node_attributes(stateG,distnum,"District Number")
+        arcprint("Adding County Number attribute")
+        nx.set_node_attributes(stateG,countynum,"County Number")
     nodes_for_G = []
 
     if distnum == {}:
@@ -459,7 +471,7 @@ def main(*args):
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,stateG,G,nlf,prevdists,neighbor_list)
+        return(dist1_pop, dist2_pop,stateG,G,nlf.copy(),prevdists,neighbor_list)
 
 if __name__ == "__main__":
     main()

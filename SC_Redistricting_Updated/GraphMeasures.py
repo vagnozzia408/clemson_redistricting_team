@@ -335,7 +335,7 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList):
     dis.HypBlueShare = dis.HypVoteCountBlue / (dis.HypVoteCountRed + dis.HypVoteCountBlue)
     dis.HypEfficiencyGap = (dis.WastedBlue - dis.WastedRed)/(dis.VoteCountRed + dis.VoteCountBlue)
             
-    return DistrictList
+    return DistrictList.copy()
     
 
 def arcprint(message,*variables):
@@ -434,7 +434,7 @@ def main(*args):
     #return(DistrictList)
     
 
-    return(DistrictList, MapObject)    
+    return(DistrictList.copy(), MapObject)    
     
    # To update DistrictList with hypothetical information:
    ## GraphMeasures.DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList)
