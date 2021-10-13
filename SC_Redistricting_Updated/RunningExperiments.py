@@ -149,15 +149,15 @@ def main(*args):
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
             maxstopcounter=50
-            numExperiments = 1
+            numExperiments = 2
             arcprint("We are using default input choices")
      
     StartTime = datetime.datetime.now()
     arcprint("Starting date and time : {0}",StartTime.strftime("%Y-%m-%d %H:%M:%S"))
     global ExperimentHolder
     ExperimentHolder = list(range(numExperiments))
-    ExperimentHolder[0] = Experiment([1, 0, 0, 0, 0], "SqrPop_10000")
-    #ExperimentHolder[1] = Experiment([0.75, 1, 0, 0, 0], "RegPop_01000")
+    ExperimentHolder[0] = Experiment([1, 0, 0, 0, 0], "_10000")
+    ExperimentHolder[1] = Experiment([0.75, 1, 0, 0, 0], "_01000")
     
     for ex in ExperimentHolder:
         [n, spd, epd, acs, ace, fss, fse, cdicvs, cdicve, cdisvs, cdisvek, sp, cp] = MultiCriteriaSimulatedAnnealing.main(in_table,in_pop_field,in_name_field,distcount,MaxIter,T,FinalT,tol,maxstopcounter,ex.alpha.copy(),ex.out_table_NAME)
