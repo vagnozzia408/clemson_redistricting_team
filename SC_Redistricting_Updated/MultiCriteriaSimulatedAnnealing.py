@@ -32,6 +32,7 @@ import GraphMeasures
 import County_Intersections
 import numpy as np
 import datetime
+import csv
 
 
 def Flip():
@@ -229,6 +230,8 @@ def main(*args):
         coolingrate = (FinalT/T)**(1/MaxIter)
         tol = float(sys.argv[8])
         maxstopcounter = sys.argv[9]
+        alpha = sys.argv[10]
+        NamingConvention = sys.argv[11]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
@@ -241,6 +244,8 @@ def main(*args):
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol = float(args[7])
             maxstopcounter = args[8]
+            alpha = args[9]
+            NamingConvention = args[10]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
@@ -249,12 +254,14 @@ def main(*args):
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=100
+            MaxIter=10
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
             maxstopcounter=50
+            alpha = [1,0,0,0,0]
+            NamingConvention ="_10000"
             arcprint("We are using default input choices")
     
     #Marking the start time of the run.
@@ -263,16 +270,16 @@ def main(*args):
     
     #This builds alpha, which is the normalized unit vector that details how much we care about any given metric. 
     metric_count = 5
-    alpha = metric_count*[0]
+    #alpha = metric_count*[0]
 #    for i in range(metric_count):
 #        alpha[i] = random.randint(1,1000)
 #    tot = sum(alpha)
 #    for i in range(metric_count):
 #        alpha[i] = alpha[i]/tot
-    alpha = [1, 0, 0, 0, 0]
+    #alpha = [1, 0, 0, 0, 0]
     arcprint("alpha = {0}",alpha)
-    if sum(alpha) !=1:
-        arcerror("The elements of alpha must sum to 1.")
+    #if sum(alpha) !=1:
+    #    arcerror("The elements of alpha must sum to 1.")
         
     origtol = tol
         
@@ -286,7 +293,7 @@ def main(*args):
     
     #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
     #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
-    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" 
+    out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + NamingConvention
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 
     #Using Spatially Constrained Multivariate Clustering instead of BBZ to create a random starting district
@@ -633,6 +640,33 @@ def main(*args):
     now = datetime.datetime.now()
     arcprint("Finishing date and time : {0}",now.strftime("%Y-%m-%d %H:%M:%S"))
     
+# AMY -- CREATING CODE TO WRITE THE ENTIRETY OF THE RELEVANT STATS TO A CSV FILE
+    header = ['MetricType']
+    for i in range(count+1):
+        header.append(i)
+        
+    #return(now, startPopDev, endPopDev, avgcomp[0], avgcomp[count], r_fairscore[0],r_fairscore[count],CDI_Count_vals[0],CDI_Count_vals[count],CDI_Square_vals[0],CDI_Square_vals[count], sumpop.copy(), [o.ppCompactScore for o in DistrictStats].copy())
+    avgcomp.insert(0,'avgcomp')
+    r_fairscore.insert(0,'r_fairscore')
+    CDI_Count_vals.insert(0,'CDI_Count_vals')
+    CDI_Square_vals.insert(0,'CDI_Square_vals')
+    popscores = sumpop.copy()
+    popscores.insert(0,'sumpop')
+    compscores = [o.ppCompactScore for o in DistrictStats]
+    compscores.insert(0,'comp_scores')
+    
+    with open(currentdir + '\ExperimentOutFile' + NamingConvention + '.csv', 'w') as out_file:
+        writer = csv.writer(out_file)
+        writer.writerow(header)
+        writer.writerow(['PopulationDeviation', startPopDev, endPopDev])
+        writer.writerow(avgcomp)
+        writer.writerow(r_fairscore)
+        writer.writerow(CDI_Count_vals)
+        writer.writerow(CDI_Square_vals)
+        writer.writerow(popscores)
+        writer.writerow(compscores) 
+    
+    return(now, startPopDev, endPopDev, avgcomp[1], avgcomp[count+1], r_fairscore[1],r_fairscore[count+1],CDI_Count_vals[1],CDI_Count_vals[count+1],CDI_Square_vals[1],CDI_Square_vals[count+1], sumpop.copy(), [o.ppCompactScore for o in DistrictStats].copy())
     
 #END FUNCTIONS    
 if __name__ == "__main__":
