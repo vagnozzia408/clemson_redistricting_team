@@ -169,6 +169,23 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
     return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list)
+    
+def FindBoundaryShapes(nbrlist):
+    boundarylist= [] #Creates a list that will contain all boundary shapes
+    
+    #THE FOLLOWING LIST NEEDS TO BE GENERALIZED MORE
+    nbrlist_fields = ['src_OBJECTID', 'nbr_OBJECTID', 'src_dist', 'nbr_dist', 'NODE_COUNT'] 
+    with arcpy.da.SearchCursor(nbrlist, nbrlist_fields) as cursor:
+        for row in cursor:
+            if row[2] != row[3] and row[4] ==0:
+                if row[0] not in boundarylist:
+                    boundarylist.append(row[0])
+                if row[1] not in boundarylist:
+                    boundarylist.append(row[1])
+    boundarylist = sorted(boundarylist)
+    #arcprint(boundarylist)
+    
+    return(boundarylist) #Returns the boundarylist
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -571,11 +588,14 @@ def main(*args):
                 DistrictStats[dist1-1].ConfirmStats(False)
                 DistrictStats[dist2-1].ConfirmStats(False)
                 MapStats.ConfirmMapStats(False)
-                temp_units_in_CDI = np.zeros([2,46], dtype=int)
                 
         arcprint("Total population in SC is {0}",sum(sumpop))
                 
-        
+    #MAIN LOOP ENDS
+    boundarylist = FindBoundaryShapes(neighbor_list)
+    
+    #NEXT, NEED TO ADD FUNCTIONALITY THAT MOVES PRECINCTS ACROSS THE BOUNDARIES TO IMPROVE POPULATION BALANCE
+    
     arcprint("\n")
     if T<=0.01:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)
