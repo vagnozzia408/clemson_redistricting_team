@@ -170,22 +170,52 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
     return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list)
     
-def FindBoundaryShapes(nbrlist):
+def FindBoundaryUnits(nbrlist, G): #Finds the list of geographic units that are on district boundaries
     boundarylist= [] #Creates a list that will contain all boundary shapes
+    boundarypairs = [] #Creates a list that will contain all pairs of adjacent geographic units in different districts
+    
+    for v in G.nodes: G.nodes[v]["Boundary"] = 0 #Initializes all nodes in the graph to *not* be on a boundary
     
     #THE FOLLOWING LIST NEEDS TO BE GENERALIZED MORE
     nbrlist_fields = ['src_OBJECTID', 'nbr_OBJECTID', 'src_dist', 'nbr_dist', 'NODE_COUNT'] 
     with arcpy.da.SearchCursor(nbrlist, nbrlist_fields) as cursor:
         for row in cursor:
-            if row[2] != row[3] and row[4] ==0:
+            if row[2] != row[3] and row[4] ==0: #If districts are different and they are adjacent by edges (NODE_COUNT=0)
                 if row[0] not in boundarylist:
                     boundarylist.append(row[0])
+                    G.nodes[row[0]]["Boundary"] = 1
                 if row[1] not in boundarylist:
                     boundarylist.append(row[1])
+                    G.nodes[row[1]]["Boundary"] = 1
+                if sorted([row[0],row[1]]) not in boundarypairs:
+                    boundarypairs.append(sorted([row[0],row[1]]))
+                    
     boundarylist = sorted(boundarylist)
-    #arcprint(boundarylist)
+    boundarypairs = sorted(boundarypairs)
     
-    return(boundarylist) #Returns the boundarylist
+    return(boundarylist, boundarypairs, G) 
+    
+def UpdateBoundaryList(nbrlist, unit, boundarylist, boundarypairs, G): #Updates the boundary list after a single geographic unit (GU) is moved from one district to another. 
+    unit_nbrs = [] #Established a list that will contain all geographic units adjacent to the single moved GU 
+    for pair in boundarypairs:#Finds all GUs that are adjacent to 'unit'
+        if pair[0] == unit:
+            unit_nbrs.append(pair[1])
+        if pair[1] == unit:
+            unit_nbrs.append(pair[0])
+    
+    if unit_nbrs ==[]: arcerror("unit_nbrs is still empty. It should be populated.")
+    
+    unit_nbrs.append(unit)
+    
+    #THE FOLLOWING LIST NEEDS TO BE GENERALIZED MORE
+    nbrlist_fields = ['src_OBJECTID', 'nbr_OBJECTID', 'src_dist', 'nbr_dist', 'NODE_COUNT'] 
+    with arcpy.da.SearchCursor(nbrlist, nbrlist_fields, """{0} IN {1} OR {2} IN {3}""".format("src_OBJECTID", unit_nbrs, "nbr_OBJECTID", unit_nbrs)) as cursor:
+        for row in cursor:
+            if (row[0] not in unit_nbrs) and (row[1] not in unit_nbrs):
+                arcerror("The search cursor did not select a member from unit_nbrs")
+            if row[2] != row[3] and row[4] == 0: #If districts are different and they are adjacent by edges (NODE_COUNT=0)
+                ##FINISH LATER
+            
         
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -351,13 +381,17 @@ def main(*args):
 
     #Runs CreateNeighborList and returns the name of the neighbor_list
     neighbor_list = CreateNeighborList.main(out_table)
+    with arcpy.da.UpdateCursor(neighbor_list, "NODE_COUNT") as cursor:
+        for row in cursor:
+            if row[0] > 0:
+                cursor.deleteRow() #Deletes all rows with that have single-point adjacency
 
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
     geo_unit_list = [[ ] for d in range(distcount)]
     
     # Copies all CLUSTER_ID's into Dist_Assgn
-    with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County","County_Num"]) as cursor:
+    with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County",CountyField]) as cursor:
         for row in cursor:
             row[0] = row[1] #Dist_Assgn = CLUSTER_ID
             row[4] = int(row[3]) #County_Num = County
