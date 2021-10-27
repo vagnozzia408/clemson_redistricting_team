@@ -235,7 +235,7 @@ def main(*args):
 #            p_list = [[]] * 7
 #            idealpop = 717252
             
-            shapefile=path+"\\Precincts_2020_SA_7dists"
+            shapefile=path+"\\PrecinctMap_FinalCleaning"
             sf_pop_field = "Precinct_P"
             sf_name_field = "OBJECTID"
             tol=30

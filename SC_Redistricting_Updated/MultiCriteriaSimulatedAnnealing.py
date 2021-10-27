@@ -387,7 +387,8 @@ def main(*args):
     with arcpy.da.UpdateCursor(neighbor_list, "NODE_COUNT") as cursor:
         for row in cursor:
             if row[0] > 0:
-                cursor.deleteRow() #Deletes all rows with that have single-point adjacency
+#                cursor.deleteRow() #Deletes all rows with that have single-point adjacency
+                pass
 
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
@@ -455,6 +456,7 @@ def main(*args):
     startPopDev = 0
     for i in range(distcount):
          startPopDev += abs(sumpop[i]-idealpop)
+    startPopDev = round(startPopDev)
     arcprint("Starting Population Deviation is {0}", startPopDev)
     deviation[0] = DeviationFromIdealPop(sumpop, idealpop, distcount)
     avgcomp[0] = sum(comp)/len(comp)
