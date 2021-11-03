@@ -23,7 +23,7 @@ def CountIntersections(dist1, dist2, cur_count, Matrix, in_table, in_dist_field,
     hyp_square += np.ndarray.sum(np.square(Temp_Matrix[0])) + np.ndarray.sum(np.square(Temp_Matrix[1])) 
     return(hyp_count, Temp_Matrix.copy(),hyp_square) 
     
-def CountIntersections2(dist1, dist2, Matrix, G):
+def CountIntersections2(dist1, dist2, Matrix, G, distcount):
     HypMatrix = Matrix.copy()
     HypMatrix[dist1-1] = 0 #zeros out the dist1-1 row
     HypMatrix[dist2-1] = 0 #zeros out the dist2-1 row
@@ -37,7 +37,15 @@ def CountIntersections2(dist1, dist2, Matrix, G):
         HypMatrix[dist2-1][int((countynum-1)/2)] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
     hypcount = np.count_nonzero(HypMatrix) #Calculates the hypothetical number of nonzero entries in the Matrix. This is our number of CDIs
     hypsquare = np.ndarray.sum(np.square(HypMatrix)) #Calculates the hypothetical sum of all squared entries in the Matrix. 
-    return(hypcount,hypsquare,HypMatrix)
+    hypexcess_GU_mat = [0]*max(distcount,46)
+    transpose = HypMatrix.transpose()
+    idx=0
+    for col in transpose:
+        maxval = max(col)
+        hypexcess_GU_mat[idx] = sum(col)-maxval #Calculates the hypothetical excess_GU values for the Matrix. 
+        idx+=1
+    hypexcess_GU = sum(hypexcess_GU_mat)
+    return(hypcount,hypsquare,HypMatrix,hypexcess_GU)
 
 
 def arcprint(message,*variables):
@@ -80,8 +88,6 @@ def main(*args):
         arcprint("We are running this from the python console")   
             
     # Set environment settings
-    #global currentdir
-    #global path
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
@@ -110,19 +116,27 @@ def main(*args):
     #CDI = County-District-Intersection
     units_in_CDI = np.zeros([distcount,46], dtype=int)
     
+    #Adds 1 to the matrix element A[i,j] if there is a precinct in the ith district and jth county
     with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
         for row in cursor:
             units_in_CDI[int(row[0])-1][int((int(row[1])-1)/2)] +=1
     
-    CDI_Count = np.count_nonzero(units_in_CDI)
-#    arcprint("CDI_Count = {0}",CDI_Count)
+    CDI_Count = np.count_nonzero(units_in_CDI) - max(distcount,46)
     
     #Squares each entry of the matrix and adds them all together
     CDI_Square = np.sum(np.square(units_in_CDI))
     
-    #arcprint("units_in_CDI = {0}",units_in_CDI)
+    #GU stands for Geographical Unit. In this loop, we count the number of GUs in each county that are not in the most prevalent district
+    excess_GU_mat = [0]*max(distcount,46)
+    transpose = units_in_CDI.transpose()
+    idx=0
+    for col in transpose:
+        maxval = max(col)
+        excess_GU_mat[idx] = sum(col)-maxval
+        idx+=1
+    excess_GU = sum(excess_GU_mat)    
     
-    return(units_in_CDI.copy(),CDI_Count,CDI_Square)
+    return(units_in_CDI.copy(),CDI_Count,CDI_Square,excess_GU)
     
 #END FUNCTIONS    
 if __name__ == "__main__":
