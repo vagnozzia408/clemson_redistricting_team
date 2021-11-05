@@ -83,13 +83,9 @@ def Flip():
                     for row in cursor:
                         row[1] = currdist
                         cursor.updateRow(row)''' 
-# This is currently NOT dealing with the area in which 3 districts join.
-    ## Should we be adding to boundarylist first, or removing?
-    ## Or instead of doing that, should we be running through the adjacency list (THIS IS THE CURRENT IMPL)
-    ## and determining the state (joining or leaving the adjaceny list) for each 
-    ## adjacent geographical unit?
-def FlipForPopulation(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG):
-    stateG.nodes[src_id]["District Number"] = new_dist      #Reassigning geographical unit properly
+
+
+def FlipForPopulation(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG): 
     connectionsToNewDist = [(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id]
     for (p1,p2) in connectionsToNewDist:
         if p1 == src_id:
@@ -98,56 +94,19 @@ def FlipForPopulation(src_id, cur_dist, new_dist, boundarylist, boundarypairs, s
         if p2 == src_id:
             if stateG.nodes[p1]["District Number"] == new_dist:
                 boundarypairs.remove((p1,p2))
-    for n in stateG.nodes[src_id].neighbors:
-        if stateG.nodes[n]["District Number"] == cur_dist: # adjacent geographical units from the cur_dist
-            # none of these geographial units are up for removal, they only would be added to boundary list
-            if n in boundarylist: # it was already a boundary geographical unit
-                boundarypairs.append((src_id,n)) # We just need to add the boundary pair
-            else : # It was not a boundary geographical unit to begin with
-                boundarylist.append(n) #Add to boundarylist
-                for m in stateG.nodes[n].neighbors: #Add all pairs to boundarypairs that belong due to n
-                    if m["District Number"] != cur_dist:
-                        boundarypairs.append((n,m))  
-        elif stateG.nodes[n]["District Number"] == new_dist: #adjacent geographical units from new_dist
-            # none of these geographical units are up for addition, only removal
-            # We won't remove these geographical units from boundary list if they touch another
-            # geographical unit thats not in new_dist, but first we want to update boundarypairs
-            # to remove pairs that involve 
-            connectionsToBoundary = [(p1,p2) for (p1,p2) in boundarypairs if p1==n or p2==n]
-            if len(connectionsToBoundary) == 0:
-                boundarylist.remove(n)
-            else :
-                # if there are still connections between geographical unit n and geographical
-                # units from other dists, it is still a boundary unit. 
-        else: 
-            # does anything change for the geographical units adajcent to src_id that 
-            # neither belong to cur_dist or new_dist
-
-#    # What no longer makes a boundary pair tuple?
-#    # Because they now belong to the same district. 
-#    for (p1, p2) in boundarypairs:
-#        if p1 == src_id:
-#            if stateG.nodes[p2]["District Number"] == new_dist:
-#                boundarypairs.remove((p1,p2)) # Will need to figure out the actual way to do this. 
-#        if p2 == src_id:
-#            if stateG.nodes[p1]["District Number"] == new_dist:
-#                boundarypairs.remove((p1,p2)) # Will need to figure out the actual way to do this. 
-#    # What is no longer a boundary precinct at all? 
-#        ## If it belongs to new_dist, and was only part of boundarypairs with src_id.
-#        ## These will only happen with geographical units adjacent to src_id whose
-#        ## boundary edge is completely contained within its adjacent edge with src_id. (CHECK LOGIC)
-#    for n in filter(stateG.nodes[n]["District Number"] == new_dist, stateG.nodes[src_id].neighbors):
-#        connectionsToBoundary = [(p1,p2) for (p1,p2) in boundarypairs if p1==n or p2==n]
-#        if len(connectionsToBoundary) == 0:
-#            boundarylist.remove(n)
-#    # What needs to be added to the boundary list:
-#        ## Geographical units in cur_dist that are adjacent to src_id        
-#                        
-#   
-#    for n in stateG.nodes[src_id].neighbors:        # Adding to boundarypairs
-#        if stateG.nodes[n]["District Number"] == cur_dist:
-#            boundarypairs.append((src_id, n))
-#     
+    for n in stateG.neighbors(src_id):
+        if stateG.nodes[n]["District Number"] == cur_dist: 
+            if n not in boundarylist: 
+                 boundarylist.append(n)
+            boundarypairs.append(tuple(sorted((src_id,n))))
+        elif stateG.nodes[n]["District Number"] == new_dist: 
+            connectionToBoundary = False
+            for nn in stateG.neighbors(n):
+                if stateG.nodes[nn]["District Number"] != new_dist:
+                    connectionToBoundary = True
+                    break
+            if connectionToBoundary != True:
+                boundarylist.remove(n)    
     
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
