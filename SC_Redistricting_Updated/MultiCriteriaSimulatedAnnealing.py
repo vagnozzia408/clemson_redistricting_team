@@ -133,7 +133,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     
     #Updates District Neighbor Pairs 
     for d in DNP:
-        potpair = [0,0]
+        potpair = [0,0] #potpair = potential pair
         if d[0]==dist1:
             potpair = sorted([dist2,d[1]])
         elif d[0]==dist2:
@@ -193,7 +193,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     #arcprint("CDI_Count = {0}", np.count_nonzero(units_in_CDI))
     
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
-    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list)
+    return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list, DNP)
     
 def FindBoundaryUnits(nbrlist, G): #Finds the list of geographic units that are on district boundaries
     boundarylist= [] #Creates a list that will contain all boundary shapes
@@ -234,14 +234,34 @@ def UpdateBoundaryList(nbrlist, unit, boundarylist, boundarypairs, G): #Updates 
     
     #THE FOLLOWING LIST NEEDS TO BE GENERALIZED MORE
     nbrlist_fields = ['src_OBJECTID', 'nbr_OBJECTID', 'src_dist', 'nbr_dist', 'NODE_COUNT'] 
+    
+    #Resets boundary status for all neighbors to 0 (not on a boundary)
+    with arcpy.da.SearchCursor(nbrlist, nbrlist_fields, """{0} IN {1} OR {2} IN {3}""".format("src_OBJECTID", unit_nbrs, "nbr_OBJECTID", unit_nbrs)) as cursor:
+        for row in cursor:
+            if row[0] in unit_nbrs:
+                boundarylist.remove(row[0])
+                G.nodes[row[0]]["Boundary"] = 0
+            if row[1] in unit_nbrs:
+                boundarylist.remove(row[1])
+                G.nodes[row[1]]["Boundary"] = 0    
+            if sorted([row[0],row[1]]) in boundarypairs:
+                boundarypairs.remove(sorted([row[0],row[1]]))
+
+    #Finds all GU in unit_nbrs that are on a boundary
     with arcpy.da.SearchCursor(nbrlist, nbrlist_fields, """{0} IN {1} OR {2} IN {3}""".format("src_OBJECTID", unit_nbrs, "nbr_OBJECTID", unit_nbrs)) as cursor:
         for row in cursor:
             if (row[0] not in unit_nbrs) and (row[1] not in unit_nbrs):
                 arcerror("The search cursor did not select a member from unit_nbrs")
             if row[2] != row[3] and row[4] == 0: #If districts are different and they are adjacent by edges (NODE_COUNT=0)
-                ##FINISH LATER
-                pass
-    return()
+                if row[0] not in boundarylist:
+                    boundarylist.append(row[0])
+                    G.nodes[row[0]]["Boundary"] = 1
+                if row[1] not in boundarylist:
+                    boundarylist.append(row[1])
+                    G.nodes[row[1]]["Boundary"] = 1
+                if sorted([row[0],row[1]]) not in boundarypairs:
+                    boundarypairs.append(sorted([row[0],row[1]]))
+    return(boundarylist, boundarypairs)
             
         
 def arcprint(message,*variables):
@@ -324,11 +344,11 @@ def main(*args):
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
 #            in_name_field = "OBJECTID"
-            in_table = path + "\\Precincts_2020"
+            in_table = path + "\\PrecinctMap_2020_Clean"
             in_pop_field = "Precinct_P"
             in_name_field = "OBJECTID_1"
             distcount=7
-            MaxIter=10
+            MaxIter=4
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -440,7 +460,7 @@ def main(*args):
             i = row[1]-1
             i = int(i)
             sumpop[i] = row[0] + sumpop[i]
-    idealpop=sum(sumpop)/distcount
+    idealpop=round(sum(sumpop)/distcount)
     arcprint("The sum of unit populations (i.e. sumpop) is {0}. Thus, the ideal population for a district is {1}.",sumpop,idealpop)
     
      #Finds the starting list of district neighbors
@@ -459,13 +479,11 @@ def main(*args):
     fair = MapStats.MedianMean     #fair is a list of MedianMean scores
     
     #Populates County-District-Intersection (CDI) values
-    [units_in_CDI, CDI_Count, CDI_Square,excess_GU] = County_Intersections.main(out_table,distcount,DistField)
-    temp_units_in_CDI = np.zeros([2,46], dtype=int)
+    [units_in_CDI, CDI_Count,excess_GU] = County_Intersections.main(out_table,distcount,DistField)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}", fair)
     arcprint("CDI_Count = {0}", CDI_Count)
     arcprint("Total number of precincts (calculated by np.sum(units_in_CDI)) = {0}", np.sum(units_in_CDI))
-    arcprint("CDI_Square = {0}", CDI_Square)
     
     #Creates vectors of zeros that will hold values for population deviation, average compactness, etc.
     deviation =[0]*(MaxIter+1)
@@ -473,7 +491,6 @@ def main(*args):
     fairscore = [0]*(MaxIter+1)
     r_fairscore = [0]*(MaxIter+1)
     CDI_Count_vals = [0]*(MaxIter+1)
-    #CDI_Square_vals = [0]*(MaxIter+1)
     excess_GU_vals = [0]*(MaxIter+1)
     
     #Populates the zeroth entry for all vectors
@@ -486,7 +503,6 @@ def main(*args):
     fairscore[0] = abs(fair)
     r_fairscore[0] = fair
     CDI_Count_vals[0] = CDI_Count
-    #CDI_Square_vals[0] = CDI_Square
     excess_GU_vals[0] = excess_GU
     
     #Initializes neighbor_list so that each entry in src_dist and nbr_dist is reset to match original districts
@@ -598,30 +614,25 @@ def main(*args):
         r_fairscore[count] = MapStats.HypMedianMean
         
         #CDI_Count_vals[count] = CDI_Count
-        #[CDI_Count, temp_units_in_CDI, CDI_Square] = County_Intersections.CountIntersections(dist1, dist2, CDI_Count_vals[count-1], units_in_CDI, out_table, "temp_dist", CDI_Square_vals[count-1], CountyField)
         [CDI_Count,CDI_Square,hyp_units_in_CDI,hyp_excess_GU] = County_Intersections.CountIntersections2(dist1,dist2,units_in_CDI,hypG,distcount)
         CDI_Count_vals[count] = CDI_Count
-        #CDI_Square_vals[count] = CDI_Square
         excess_GU_vals[count] = hyp_excess_GU
            
         DeltaE_dev = deviation[count] - deviation[count-1]
         DeltaE_comp = avgcomp[count] - avgcomp[count-1]
         DeltaE_fair = fairscore[count] - fairscore[count-1]
         DeltaE_county = CDI_Count_vals[count] - CDI_Count_vals[count-1]
-        #DeltaE_square = CDI_Square_vals[count-1] - CDI_Square_vals[count]
         DeltaE_excess_GU = excess_GU_vals[count] - excess_GU_vals[count-1]
         arcprint("DeltaE_dev = {0}.",DeltaE_dev)
         arcprint("DeltaE_comp = {0}.",DeltaE_comp)
         arcprint("DeltaE_fair = {0}.", DeltaE_fair)
         arcprint("DeltaE_county = {0}.", DeltaE_county)
-        #arcprint("DeltaE_square = {0}.", DeltaE_square)
         arcprint("DeltaE_excess_GU= {0}.", DeltaE_excess_GU)
         
         prev_DeltaE[count % 5][0] = abs(DeltaE_dev)
         prev_DeltaE[count % 5][1] = abs(DeltaE_comp)
         prev_DeltaE[count % 5][2] = abs(DeltaE_fair)
         prev_DeltaE[count % 5][3] = abs(DeltaE_county)
-        #prev_DeltaE[count % 5][4] = abs(DeltaE_square)
         prev_DeltaE[count % 5][4] = abs(DeltaE_excess_GU)
         
         for i in range(metric_count):
@@ -629,13 +640,11 @@ def main(*args):
             if norm[i] == 0:
                 norm[i]=1
         #Calculates DeltaE based on each of the metrics_
-        #DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_square*alpha[4]/norm[4]
         DeltaE = DeltaE_dev*alpha[0]/norm[0]+ DeltaE_comp*alpha[1]/norm[1] + DeltaE_fair*alpha[2]/norm[2] + DeltaE_county*alpha[3]/norm[3] + DeltaE_excess_GU*alpha[4]/norm[4]
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         if DeltaE <0: #An improvement!
-            #[T,sumpop,stateG,neighbor_list,DistrictStats, MapStats, units_in_CDI, geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI, geo_unit_list,DistNbrPairs)
-            [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+            [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistrictNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -648,8 +657,7 @@ def main(*args):
                 arcerror("p was nan")
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                #[T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, temp_units_in_CDI,geo_unit_list,DistNbrPairs)
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistrictNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -664,8 +672,7 @@ def main(*args):
         arcprint("Total population in SC is {0}",sum(sumpop))
                 
     #MAIN LOOP ENDS
-    boundarylist = FindBoundaryUnits(neighbor_list)
-    boundarylist = [] # List of Geographical Units that sit on the boundary of their respective districts
+    boundarylist = FindBoundaryUnits(neighbor_list) # List of Geographical Units that sit on the boundary of their respective districts
     boundarypairs = [] # List of tuples ( , ) such that both precincts are on the boundary of different districts and adjacent to eachother. 
     
     
@@ -686,7 +693,6 @@ def main(*args):
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
     arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",r_fairscore[0],r_fairscore[count])
     arcprint("Original CDI_Count Score = {0}. Final CDI_Count Score = {1}",CDI_Count_vals[0],CDI_Count_vals[count])
-    #arcprint("Original CDI_Square Score = {0}. Final CDI_Square Score = {1}",CDI_Square_vals[0],CDI_Square_vals[count])
     arcprint("Original Excess_GU Score = {0}. Final Excess_GU Score = {1}",excess_GU_vals[0],excess_GU_vals[count])
     arcprint("The population of each district is {0}",sumpop)
     arcprint("The compactness of each district is {0}",[o.ppCompactScore for o in DistrictStats])
@@ -710,7 +716,7 @@ def main(*args):
         nx.set_node_attributes(stateG,distnum,"District Number")
     
     #Updates the shapefile with current district numbers
-    with arcpy.da.UpdateCursor(out_table,["SOURCE_ID","Dist_Assgn"]) as cursor:
+    with arcpy.da.UpdateCursor(out_table,["SOURCE_ID",DistField]) as cursor:
         for row in cursor:
             objid= row[0]
             row[1] = stateG.nodes[objid]["District Number"]
@@ -729,7 +735,7 @@ def main(*args):
     lyr = aprxMap.listLayers()[0]
     sym = lyr.symbology
     sym.updateRenderer('UniqueValueRenderer')
-    sym.renderer.fields = ['Dist_Assgn']
+    sym.renderer.fields = [DistField]
     lyr.symbology = sym
     aprx.save()
     
@@ -745,7 +751,7 @@ def main(*args):
     avgcomp.insert(0,'avgcomp')
     r_fairscore.insert(0,'r_fairscore')
     CDI_Count_vals.insert(0,'CDI_Count_vals')
-    CDI_Square_vals.insert(0,'CDI_Square_vals')
+    excess_GU_vals.insert(0,'excess_GU_vals')
     popscores = sumpop.copy()
     popscores.insert(0,'sumpop')
     compscores = [o.ppCompactScore for o in DistrictStats]
@@ -758,11 +764,11 @@ def main(*args):
         writer.writerow(avgcomp)
         writer.writerow(r_fairscore)
         writer.writerow(CDI_Count_vals)
-        writer.writerow(CDI_Square_vals)
+        writer.writerow(excess_GU_vals)
         writer.writerow(popscores)
         writer.writerow(compscores) 
     
-    return(now, startPopDev, endPopDev, avgcomp[1], avgcomp[count+1], r_fairscore[1],r_fairscore[count+1],CDI_Count_vals[1],CDI_Count_vals[count+1],CDI_Square_vals[1],CDI_Square_vals[count+1], sumpop.copy(), [o.ppCompactScore for o in DistrictStats].copy())
+    return(now, startPopDev, endPopDev, avgcomp[1], avgcomp[count+1], r_fairscore[1],r_fairscore[count+1],CDI_Count_vals[1],CDI_Count_vals[count+1],excess_GU_vals[1],excess_GU_vals[count+1], sumpop.copy(), [o.ppCompactScore for o in DistrictStats].copy())
     
 #END FUNCTIONS    
 if __name__ == "__main__":

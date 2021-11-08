@@ -35,7 +35,7 @@ def CountIntersections2(dist1, dist2, Matrix, G, distcount):
     for p in polys_in_dist2:
         countynum = int(G.nodes[p]["County Number"]) #county number corresponding to the precinct in dist2
         HypMatrix[dist2-1][int((countynum-1)/2)] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
-    hypcount = np.count_nonzero(HypMatrix) #Calculates the hypothetical number of nonzero entries in the Matrix. This is our number of CDIs
+    hypcount = np.count_nonzero(HypMatrix)-max(46,distcount) #Calculates the hypothetical number of nonzero entries in the Matrix. This is our number of CDIs
     hypsquare = np.ndarray.sum(np.square(HypMatrix)) #Calculates the hypothetical sum of all squared entries in the Matrix. 
     hypexcess_GU_mat = [0]*max(distcount,46)
     transpose = HypMatrix.transpose()
@@ -45,7 +45,7 @@ def CountIntersections2(dist1, dist2, Matrix, G, distcount):
         hypexcess_GU_mat[idx] = sum(col)-maxval #Calculates the hypothetical excess_GU values for the Matrix. 
         idx+=1
     hypexcess_GU = sum(hypexcess_GU_mat)
-    return(hypcount,hypsquare,HypMatrix,hypexcess_GU)
+    return(hypcount,HypMatrix,hypexcess_GU)
 
 
 def arcprint(message,*variables):
@@ -130,13 +130,13 @@ def main(*args):
     excess_GU_mat = [0]*max(distcount,46)
     transpose = units_in_CDI.transpose()
     idx=0
-    for col in transpose:
-        maxval = max(col)
-        excess_GU_mat[idx] = sum(col)-maxval
+    for row in transpose:
+        maxval = max(row)
+        excess_GU_mat[idx] = sum(row)-maxval
         idx+=1
-    excess_GU = sum(excess_GU_mat)    
+    excess_GU = sum(excess_GU_mat)
     
-    return(units_in_CDI.copy(),CDI_Count,CDI_Square,excess_GU)
+    return(units_in_CDI.copy(),CDI_Count,excess_GU)
     
 #END FUNCTIONS    
 if __name__ == "__main__":
