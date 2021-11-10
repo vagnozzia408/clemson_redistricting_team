@@ -672,9 +672,34 @@ def main(*args):
         arcprint("Total population in SC is {0}",sum(sumpop))
                 
     #MAIN LOOP ENDS
-    boundarylist = FindBoundaryUnits(neighbor_list) # List of Geographical Units that sit on the boundary of their respective districts
+    [boundarylist,boundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG) # List of Geographical Units that sit on the boundary of their respective districts
     boundarypairs = [] # List of tuples ( , ) such that both precincts are on the boundary of different districts and adjacent to eachother. 
+    maxpopdiff = 0
     
+    #The following loop finds the two neighboring districts with the biggest gap in population
+    for distpair in DistNbrPairs: 
+        dist1= distpair[0]
+        dist2= distpair[1]
+        popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
+        if popdiff > maxpopdiff: 
+            maxpopdiff= popdiff
+            if sumpop[dist1-1] >= sumpop[dist2-1]:
+                updist = dist1 #district with larger population
+                downdist = dist2 #district with smaller population
+            else:
+                updist = dist2
+                downdist = dist1
+                
+    cand_GU_list = [] #Candidate Geographical Unit List. This list will contain all GUs that can be moved from updist to downdist
+    for GU_pair in boundarypairs:
+        GU_0 = GU_pair[0]
+        GU_1 = GU_pair[1]
+        if stateG.nodes[GU_0]["District Number"]==updist and stateG.nodes[GU_1]["District Number"]==downdist:
+            cand_GU_list.append(GU_pair)
+        elif stateG.nodes[GU_0]["District Number"]==downdist and stateG.nodes[GU_1]["District Number"]==updist:
+            cand_GU_list.append(GU_pair)
+    
+    #Now assess how each candidate GU will affect Delta_E
     
     #NEXT, NEED TO ADD FUNCTIONALITY THAT MOVES PRECINCTS ACROSS THE BOUNDARIES TO IMPROVE POPULATION BALANCE
     
