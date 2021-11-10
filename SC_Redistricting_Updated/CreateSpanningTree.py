@@ -120,10 +120,6 @@ def FindEdgeCut(tree,tol,criteria,idealpop):
 #        arcprint("The subgraph candidates are {0}.",subgraphs_lst)
         dist_crit1 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[0]) #Finds population sum for first district
         dist_crit2 = sum(value for key, value in nx.get_node_attributes(tree,criteria).items() if key in subgraphs_lst[1]) #Finds population sum for second district
-#        if criteria == "Population":
-#            total_crit = 2*idealpop
-#        else:
-#            pass
         total_crit= dist_crit1+dist_crit2
         if abs(dist_crit1 - total_crit/2) > 0.01*tol*(total_crit/2) or abs(dist_crit2 - total_crit/2) > 0.01*tol*(total_crit/2):
             tree.add_edge(*e) #Adds the edge back to the tree if it didn't meet the tolerance
