@@ -85,7 +85,7 @@ def Flip():
                         cursor.updateRow(row)''' 
 
 
-def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG): 
+def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG,sumpop,popdev): 
     connectionsToNewDist = [(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id]
     for (p1,p2) in connectionsToNewDist:
         if p1 == src_id:
@@ -109,7 +109,13 @@ def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG):
             if connectionToBoundary != True:
                 boundarylist.remove(n)    
                 stateG.nodes[n]["Boundary"] = 0
-    return(boundarylist, boundarypairs,stateG)
+    
+    sumpop[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
+    sumpop[new_dist-1] += stateG.nodes[src_id]["Population"]
+    popdev[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
+    popdev[new_dist-1] += stateG.nodes[src_id]["Population"]
+    
+    return(boundarylist, boundarypairs,stateG,sumpop,popdev)
     
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
@@ -329,6 +335,7 @@ def main(*args):
         maxstopcounter = sys.argv[9]
         alpha = sys.argv[10]
         NamingConvention = sys.argv[11]
+        perc = sys.argv[12]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
@@ -343,6 +350,7 @@ def main(*args):
             maxstopcounter = args[8]
             alpha = args[9]
             NamingConvention = args[10]
+            perc = args[11]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
@@ -359,6 +367,7 @@ def main(*args):
             maxstopcounter=50
             alpha = [1,0,0,0,0]
             NamingConvention ="_10000"
+            perc = 5
             arcprint("We are using default input choices")
     
     #Marking the start time of the run.
@@ -677,25 +686,31 @@ def main(*args):
     #MAIN LOOP ENDS
     [boundarylist,boundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG) # List of Geographical Units that sit on the boundary of their respective districts
     boundarypairs = [] # List of tuples ( , ) such that both precincts are on the boundary of different districts and adjacent to eachother. 
-    maxpopdiff = 0
+    flag_for_flip=True
+    contcount=0
     
     popdev = [0]*distcount
-    for i in 
+    for i in range(len(popdev)):
+        popdev[i] = sumpop[i]-idealpop
     
-    while max(sumpop)-idealpop
+    DNP = {}
+    for distpair in DistNbrPairs: 
+        dist1= distpair[0]
+        dist2= distpair[1]
+        popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
+        DNP[tuple(sorted(distpair))] = popdiff
+    
+    while max([abs(pop) for pop in popdev])> perc/100*idealpop: #While any district population is outside the target window
         #The following loop finds the two neighboring districts with the biggest gap in population
-        for distpair in DistNbrPairs: 
-            dist1= distpair[0]
-            dist2= distpair[1]
-            popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
-            if popdiff > maxpopdiff: 
-                maxpopdiff= popdiff
-                if sumpop[dist1-1] >= sumpop[dist2-1]:
-                    updist = dist1 #district with larger population
-                    downdist = dist2 #district with smaller population
-                else:
-                    updist = dist2
-                    downdist = dist1
+        DNP = dict(sorted(DNP.items(), key=lambda item: item[1],reverse=True)) #Sorts dictionary by popdiff
+        dist1 = list(DNP.keys())[contcount][0]
+        dist2 = list(DNP.keys())[contcount][1]
+        if sumpop[dist1-1] >= sumpop[dist2-1]:
+            updist = dist1 #district with larger population
+            downdist = dist2 #district with smaller population
+        else:
+            updist = dist2
+            downdist = dist1
                     
         cand_GU_dict = {} #Candidate Geographical Unit Dictionary. This dictionary will contain all GUs that can be moved from updist to downdist along with their populations
         for GU_pair in boundarypairs:
@@ -708,23 +723,38 @@ def main(*args):
                 
         cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population
         
-        flag_for_flip=True
-        
         for GU in cand_GU_dict:
             stateG.nodes[GU]["District Number"] = downdist #Executes the flip
             DistrictNodes = [n for n in stateG.nodes() if stateG.nodes[n]["District Number"] == updist] #Finds all nodes in updist
             sg_for_updist = stateG.subgraph(DistrictNodes)
             if nx.is_connected(sg_for_updist):
                 break
-            else:
+            else: #updist is no longer contiguous
                 stateG.nodes[GU]["District Number"] = updist #Undoes the flip
                 if GU == list(cand_GU_dict.keys()[-1]): 
-                    arcprint("We have exhausted all candidate boundary GUs. Please try again :)")
+                    arcprint("We have exhausted all candidate boundary GUs. Trying again with a new district pair")
                     flag_for_flip = False
+                    contcount += 1
+                    
         
         if flag_for_flip == True:
-            [boundarylist,boundarypairs,stateG] = FlipUpdate(GU,updist,downdist,boundarylist,boundarypairs,stateG) #Updates boundarylist and boundary pairs
-    
+            contcount=0
+            [boundarylist,boundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,boundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundary pairs
+            popdiff = sumpop[updist-1]-sumpop[downdist-1]
+            DNP[tuple(sorted((updist,downdist)))] = popdiff
+            #Now check to see if DistNbrPairs changed
+            for pair in boundarypairs:
+                dist1 = stateG.nodes[pair[0]]["District Number"]
+                dist2 = stateG.nodes[pair[1]]["District Number"]
+                if not (tuple(sorted((dist1,dist2))) in DNP.keys()):
+                    popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
+                    DNP[tuple(sorted((dist1,dist2)))] = popdiff
+                    DistNbrPairs.append([dist1,dist2])
+            #updist is the only district that could lose a district neighbor
+            #downdist is the only district that could gain a district neighbor
+
+                
+
         
     
     #NEXT, NEED TO ADD FUNCTIONALITY THAT MOVES PRECINCTS ACROSS THE BOUNDARIES TO IMPROVE POPULATION BALANCE
