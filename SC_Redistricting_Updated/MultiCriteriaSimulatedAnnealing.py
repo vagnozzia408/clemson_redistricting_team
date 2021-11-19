@@ -141,7 +141,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     arcprint("The change was accepted!")
     
     #Updates District Neighbor Pairs 
-    for d in DNP:
+    for d in DNP.keys():
         potpair = [0,0] #potpair = potential pair
         if d[0]==dist1:
             potpair = sorted([dist2,d[1]])
@@ -151,10 +151,10 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             potpair = sorted([dist2,d[0]])
         elif d[1]==dist2:
             potpair = sorted([dist1,d[0]])
-        if potpair[0]==potpair[1] or potpair in DNP:
+        if potpair[0]==potpair[1] or potpair in DNP.keys():
             continue
         else:
-            DNP.append(potpair)
+            DNP[potpair]=None
     
     #Updates the neighbor list table after each iteration
     #Note: nlf[3] = 'src_dist', nlf[4] = 'nbr_dist'
@@ -477,11 +477,12 @@ def main(*args):
     
      #Finds the starting list of district neighbors
     DistNbrList = out_table + "_dist_nbr_list"
-    DistNbrPairs = []
+    DistNbrPairs = {}
+    DNP = DistNbrPairs #An alias
     arcpy.analysis.PolygonNeighbors(out_table, DistNbrList, DistField,both_sides = "NO_BOTH_SIDES")
     with arcpy.da.SearchCursor(DistNbrList, ["src_Dist_Assgn", "nbr_Dist_Assgn"], """{}<{}""".format("src_Dist_Assgn", "nbr_Dist_Assgn")) as cursor:
         for row in cursor:
-            DistNbrPairs.append([row[0],row[1]])
+            DistNbrPairs[sorted((row[0],row[1]))] = None #Eventually, each DNP will be associated with their population difference
     arcprint("DistNbrPairs = {0}", DistNbrPairs)
     
     
@@ -559,10 +560,10 @@ def main(*args):
 #            dist2 = dist1
 #            dist1 = temp
         r= random.randint(0,len(DistNbrPairs)-1)
-        [dist1,dist2] = DistNbrPairs[r]
+        [dist1,dist2] = list(DistNbrPairs.keys())[r]
         whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
-        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or [dist1,dist2] not in DistNbrPairs: 
+        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
 #            dist1 = random.randint(1,distcount)
 #            dist2 = random.randint(1,distcount)
 #            if dist1 >dist2:
@@ -570,7 +571,7 @@ def main(*args):
 #                dist2 = dist1
 #                dist1 = temp
             r= random.randint(0,len(DistNbrPairs)-1)
-            [dist1,dist2] = DistNbrPairs[r]
+            [dist1,dist2] = list(DistNbrPairs.keys())[r]
             whilecount+=1
             if whilecount % 100 ==0:
                 arcprint("We searched through {0} new district pairs and couldn't find any that met our criteria.",whilecount)
@@ -588,6 +589,7 @@ def main(*args):
             arcprint("We had a system error. Selecting new districts")
             count -= 1
             stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
+            del DNP[(dist1,dist2)]
             continue
         if dist1_pop==float('inf') or dist2_pop==float('inf'):
             count-=1
@@ -682,10 +684,9 @@ def main(*args):
                 MapStats.ConfirmMapStats(False)
                 
         #arcprint("Total population in SC is {0}",sum(sumpop))
-                
+    
     #MAIN LOOP ENDS
     [boundarylist,boundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG) # List of Geographical Units that sit on the boundary of their respective districts
-    boundarypairs = [] # List of tuples ( , ) such that both precincts are on the boundary of different districts and adjacent to eachother. 
     flag_for_flip=True
     contcount=0
     
@@ -693,8 +694,7 @@ def main(*args):
     for i in range(len(popdev)):
         popdev[i] = sumpop[i]-idealpop
     
-    DNP = {}
-    for distpair in DistNbrPairs: 
+    for distpair in DNP: 
         dist1= distpair[0]
         dist2= distpair[1]
         popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
@@ -711,7 +711,9 @@ def main(*args):
         else:
             updist = dist2
             downdist = dist1
-                    
+        
+        #Want a list of boundary pairs for each set of adjacent districts. Then instead of iterating through boundarypairs, we can iterate through a smaller list
+        
         cand_GU_dict = {} #Candidate Geographical Unit Dictionary. This dictionary will contain all GUs that can be moved from updist to downdist along with their populations
         for GU_pair in boundarypairs:
             GU_0 = GU_pair[0]
@@ -749,10 +751,10 @@ def main(*args):
                 if not (tuple(sorted((dist1,dist2))) in DNP.keys()):
                     popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
                     DNP[tuple(sorted((dist1,dist2)))] = popdiff
-                    DistNbrPairs.append([dist1,dist2])
             #updist is the only district that could lose a district neighbor
             #downdist is the only district that could gain a district neighbor
 
+            #DNP may lose entries. How to account for that? Maybe we don't.
                 
 
         

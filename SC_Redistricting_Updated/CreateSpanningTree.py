@@ -99,11 +99,11 @@ def FindEdgeCut(tree,tol,criteria,idealpop):
     has criteria (like population) within that percent tolerance. The variable 'tol' should be a positive real 
     number in (0,100]. The criteria should be string that labels an attribute of the nodes of the tree.'''
     if tol > 100 or tol <=0 or (isinstance(tol,float)==False and isinstance(tol,int)==False): 
-        arcerror2("tol must be a float or integer variable in the range (0,100].")
+        arcerror("tol must be a float or integer variable in the range (0,100].")
     if nx.is_tree(tree) == False:
-        arcerror2("The input graph must be a tree.")
+        arcerror("The input graph must be a tree.")
     if isinstance(criteria,str)==False:
-        arcerror2("The criteria input should be a string.")
+        arcerror("The criteria input should be a string.")
     tree_edge_list = list(tree.edges)
     random.shuffle(tree_edge_list) #Randomly shuffles the edges of T
     e=None
@@ -303,7 +303,7 @@ def main(*args):
 
     if AdjFlag==0: 
         arcprint("Districts {0} and {1} are not adjacent.",dist1, dist2)
-        arcerror2("Districts {0} and {1} are not adjacent.",dist1, dist2)
+        arcerror2("")
 
     ## Where Amy's code edits end.
     
@@ -461,7 +461,7 @@ def main(*args):
                     row[1] = 0
                     DontMoveCount += 1
                 else:
-                    arcerror2("{0} is not assigned a proper district...", row[0])
+                    arcerror("{0} is not assigned a proper district...", row[0])
                 cursor.updateRow(row)
 #        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
     
