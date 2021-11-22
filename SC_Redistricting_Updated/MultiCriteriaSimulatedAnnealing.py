@@ -326,40 +326,49 @@ def main(*args):
         in_table = sys.argv[1]
         in_pop_field = sys.argv[2]
         in_name_field = sys.argv[3]
-        distcount = int(sys.argv[4])
-        MaxIter = int(sys.argv[5])
-        T = float(sys.argv[6])
-        FinalT = float(sys.argv[7])
+        in_county_field = sys.argv[4]
+        in_voteblue_field = sys.argv[5]
+        in_votered_field = sys.argv[6]
+        distcount = int(sys.argv[7])
+        MaxIter = int(sys.argv[8])
+        T = float(sys.argv[9])
+        FinalT = float(sys.argv[10])
         coolingrate = (FinalT/T)**(1/MaxIter)
-        tol = float(sys.argv[8])
-        maxstopcounter = sys.argv[9]
-        alpha = sys.argv[10]
-        NamingConvention = sys.argv[11]
-        perc = sys.argv[12]
+        tol = float(sys.argv[11])
+        maxstopcounter = sys.argv[12]
+        alpha = sys.argv[13]
+        NamingConvention = sys.argv[14]
+        pop_perc = sys.argv[15]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
             in_pop_field = args[1]
             in_name_field = args[2]
-            distcount = int(args[3])
-            MaxIter = int(args[4])
-            T = float(args[5])
-            FinalT = float(args[6])
+            in_county_field = args[3]
+            in_voteblue_field = args[4]
+            in_votered_field = args[5]
+            distcount = int(args[6])
+            MaxIter = int(args[7])
+            T = float(args[8])
+            FinalT = float(args[9])
             coolingrate = (FinalT/T)**(1/MaxIter)
-            tol = float(args[7])
-            maxstopcounter = args[8]
-            alpha = args[9]
-            NamingConvention = args[10]
-            perc = args[11]
+            tol = float(args[10])
+            maxstopcounter = args[11]
+            alpha = args[12]
+            NamingConvention = args[13]
+            pop_perc = args[14]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
 #            in_name_field = "OBJECTID"
-            in_table = path + "\\PrecinctMap_2020_Clean"
-            in_pop_field = "Precinct_P"
-            in_name_field = "OBJECTID_1"
+            in_table = path + "\\SC_Precincts_2021_v7"
+            in_pop_field = "POPULATION"
+            in_name_field = "OBJECTID"
+            in_county_field = "COUNTY"
+            in_voteblue_field = "PresBlue"
+            in_votered_field = "PresRed"
             distcount=7
-            MaxIter=4
+            MaxIter=10
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -367,7 +376,7 @@ def main(*args):
             maxstopcounter=50
             alpha = [1,0,0,0,0]
             NamingConvention ="_10000"
-            perc = 5
+            pop_perc = 5
             arcprint("We are using default input choices")
     
     #Marking the start time of the run.
@@ -410,7 +419,7 @@ def main(*args):
         for row in cursor:
             row[0] = random.randint(1,100000)
             cursor.updateRow(row)
-    arcprint("Running Spatially Constrained Multivariate Clustering to create initial starting map...")
+    arcprint("Running Spatially Constrained Multivariate Clustering to create initial map...")
     arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
     ###NEED TO ADDRESS ExecuteError where it can't find district with max/min constraints
     
@@ -419,11 +428,11 @@ def main(*args):
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_pop_field)
     
     #Adds vote totals as a column in out_table
-    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Blue")
-    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "Vote_Red")
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_voteblue_field)
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_votered_field)
     
     #Adds county numbers to out_table
-    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, "County")
+    arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_county_field)
     
     #Creates a column named "temp_dist" and zeros it out
     if not arcpy.ListFields(out_table, "temp_dist"):
@@ -448,13 +457,22 @@ def main(*args):
 
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
-    geo_unit_list = [[ ] for d in range(distcount)]
+    
+    county_list = [row.getValue (in_county_field) for row in arcpy.SearchCursor (out_table)] #Gets original county values
+    county_list = list(set(county_list)) #sorts the list and deletes duplicate values
+    county_dict = {}
+    i=0
+    for county in county_list:
+        county_dict[county] = i #Populates a dictionary that associates each original county value with its sorted value
+        i+=i
+    
+    geo_unit_list = [[ ] for d in range(distcount)] #Amy, what does this do? ~Blake
     
     # Copies all CLUSTER_ID's into Dist_Assgn
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County",CountyField]) as cursor:
         for row in cursor:
             row[0] = row[1] #Dist_Assgn = CLUSTER_ID
-            row[4] = int(row[3]) #County_Num = County
+            row[4] = county_dict[row[3]] #County_Num = sorted county value (if there are n counties, then this value will be between 0 and n-1)
             geo_unit_list[row[0]-1].append(row[2])
             cursor.updateRow(row)
     ucount = 0
@@ -482,11 +500,11 @@ def main(*args):
     arcpy.analysis.PolygonNeighbors(out_table, DistNbrList, DistField,both_sides = "NO_BOTH_SIDES")
     with arcpy.da.SearchCursor(DistNbrList, ["src_Dist_Assgn", "nbr_Dist_Assgn"], """{}<{}""".format("src_Dist_Assgn", "nbr_Dist_Assgn")) as cursor:
         for row in cursor:
-            DistNbrPairs[sorted((row[0],row[1]))] = None #Eventually, each DNP will be associated with their population difference
+            DNP[tuple(sorted((row[0],row[1])))] = None #Eventually, each DNP will be associated with their population difference
     arcprint("DistNbrPairs = {0}", DistNbrPairs)
     
     
-    [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField) #Populates DistrictStats and MapStats using GraphMeasures
+    [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField,in_voteblue_field, in_votered_field) #Populates DistrictStats and MapStats using GraphMeasures
     comp = [o.ppCompactScore for o in DistrictStats]    #comp is a list of compactness scores
     for i in range(len(comp)): comp[i] = 1/comp[i]-1    #Inverts the PP compactness score and subtracts 1 to make ideal value = 0
     fair = MapStats.MedianMean     #fair is a list of MedianMean scores
@@ -618,7 +636,7 @@ def main(*args):
         hypsumpop[dist2-1] = dist2_pop
         deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount) #Calculates the absolute deviation from ideal for this proposed change. 
         
-        DistrictStats = GraphMeasures.DistrictUpdateForHyp(dist1,dist2, out_table,path, DistrictStats)
+        DistrictStats = GraphMeasures.DistrictUpdateForHyp(dist1,dist2, out_table,path, DistrictStats,in_voteblue_field, in_votered_field)
         hypcomp = [o.HypppCompactScore for o in DistrictStats] #A list of hypothetical compactness scores
         for i in range(len(hypcomp)): hypcomp[i] = 1/hypcomp[i]-1    #Inverts the hyp PP compactness score and subtracts 1 to make ideal value = 0
         avgcomp[count] = sum(hypcomp)/len(hypcomp)
@@ -700,7 +718,7 @@ def main(*args):
         popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
         DNP[tuple(sorted(distpair))] = popdiff
     
-    while max([abs(pop) for pop in popdev])> perc/100*idealpop: #While any district population is outside the target window
+    while max([abs(pop) for pop in popdev])> pop_perc/100*idealpop: #While any district population is outside the target window
         #The following loop finds the two neighboring districts with the biggest gap in population
         DNP = dict(sorted(DNP.items(), key=lambda item: item[1],reverse=True)) #Sorts dictionary by popdiff
         dist1 = list(DNP.keys())[contcount][0]

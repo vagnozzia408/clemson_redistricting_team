@@ -6,7 +6,6 @@ Created on Fri Jul 23 13:04:43 2021
 """
 
 from __future__ import division
-import io
 import arcpy,os, sys
 #import CreateSpanningTree
 import numpy as np
@@ -261,7 +260,7 @@ class Map:
         self.HypAvgStateWideVote = 0
         self.HypBlueSeatsWon = 0
         
-def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList):
+def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueField, voteRedField):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
     inZoneData = shapefile
     zoneField = "temp_dist"
@@ -284,7 +283,7 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList):
     #DistrictList[dist1 - 1].HypVoteCountBlue = 0
     #DistrictList[dist2 - 1].HypVoteCountRed = 0
     #DistrictList[dist2 - 1].HypVoteCountBlue = 0
-    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "temp_dist", "Vote_Red", "Vote_Blue"], '''{}={} OR {}={}'''.format("temp_dist",1,"temp_dist",2)) as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["SOURCE_ID", "temp_dist", voteRedField, voteBlueField], '''{}={} OR {}={}'''.format("temp_dist",1,"temp_dist",2)) as cursor:
         for row in cursor:
             if row[1]==1:
                 DistrictList[dist1-1].HypVoteCountRed += row[2]
@@ -357,6 +356,8 @@ def main(*args):
     global DistrictList
     global MapObject
     global runspot #Allows runspot to be changed inside a function
+    global voteRedField
+    global voteBlueField
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
@@ -376,13 +377,19 @@ def main(*args):
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         shapefile=sys.argv[1]
         zoneField = sys.argv[2]
+        voteBlueField = sys.argv[3]
+        voteRedField = sys.argv[4]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             shapefile = args[0]
             zoneField = args[1]
+            voteBlueField = args[2]
+            voteRedField = args[3]
         except IndexError: #Finally, manually assigns input values if they aren't provided
             shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             zoneField = "Cluster_ID"
+            voteBlueField = "PresBlue"
+            voteRedField = "PresRed"
             arcprint("We are using default input choices for GraphMeasures.py")
     
     # Run Compactness Scores the first time and list the list DistrictList
@@ -400,7 +407,7 @@ def main(*args):
 
     MapObject = Map(0)  
     
-    with arcpy.da.SearchCursor(shapefile, ["Dist_Assgn", "Vote_Blue", "Vote_Red"], "*") as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["Dist_Assgn", voteBlueField, voteRedField], "*") as cursor:
         for row in cursor:
             DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
             DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])
