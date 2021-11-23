@@ -18,8 +18,11 @@ Created on Thu Apr 15 16:52:28 2021
 "#10. Make this code create its own neighbor list --- DONE. Uses CreateNeighborList (Blake)"
 #11. Consider appending population field and custom naming field to out_table
 #12. Add timers to time sections of code
-#13. Reconsider starting temperatures
-#14. Make code modular enough to change input metrics
+#13. Make code modular enough to change input metrics
+#14. Make polsby popper scores have 3 decimals places instead of 17
+#15. Add counter to determine how many flips were needed. 
+#16. Consider adjusting phase 2 so that it also considers metrics other than just population
+#17. Add comments throughout, especially in the functions
 
 import arcpy,math,os,sys
 import random
@@ -86,15 +89,18 @@ def Flip():
 
 
 def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, sumpop, popdev): 
-    connectionsToNewDist = list(set([(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id]))
-    arcprint("connectionsToNewDist = {0}",connectionsToNewDist)
-    arcprint("boundarypairs = {0}",boundarypairs)
+    connectionsToNewDist = list(set([(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id])) #List of boundary pairs that contain src_id as an entry
+    arcprint("Flipping GU {0} from district {1} to district {2}", src_id, cur_dist, new_dist)
+    #arcprint("src_id = {0}", src_id)
+    #arcprint("connectionsToNewDist = {0}",connectionsToNewDist)
+    #arcprint("boundarypairs = {0}",boundarypairs)
+    
+    #The following 'for' loop removes [p1,p2] from boundarylist if both p1 and p2 are in new_dist (and therefore not a boundarypair anymore)
     for (p1,p2) in connectionsToNewDist:
         if p1 == src_id:
-            arcprint("(p1,p2) = {0}",(p1,p2))
             if stateG.nodes[p2]["District Number"] == new_dist:
                 boundarypairs.remove([p1,p2])
-        if p2 == src_id:
+        elif p2 == src_id:
             if stateG.nodes[p1]["District Number"] == new_dist:
                 boundarypairs.remove([p1,p2])
     for n in stateG.neighbors(src_id):
@@ -102,7 +108,7 @@ def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, 
             if n not in boundarylist: 
                  boundarylist.append(n)
                  stateG.nodes[n]["Boundary"] = 1
-            boundarypairs.append(tuple(sorted((src_id,n))))
+            boundarypairs.append(list(sorted((src_id,n))))
         elif stateG.nodes[n]["District Number"] == new_dist: 
             connectionToBoundary = False
             for nn in stateG.neighbors(n):
@@ -118,21 +124,24 @@ def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, 
     popdev[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
     popdev[new_dist-1] += stateG.nodes[src_id]["Population"]
     
+    boundarypairs = sorted(boundarypairs)
+    boundarylist = sorted(boundarylist)
+    
     return(boundarylist, boundarypairs,stateG,sumpop,popdev)
     
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
     """Returns a single positive integer that sums each district's deviation from the ideal population. Lower numbers for 'deviation' are better. A value of zero would indicate that every district has an equal number of people"""
     absdev = [0 for i in range(distcount)]
-    sqrdev = [0 for i in range(distcount)]
+    #sqrdev = [0 for i in range(distcount)]
     
     for i in range(distcount):
         absdev[i] = abs(sumpop[i]-idealpop)
-        sqrdev[i] = pow(sumpop[i]-idealpop, 2)
-    #deviation_ = sum(absdev)
-    #deviation_ = round(deviation_)
-    deviation_ = sum(sqrdev)
+        #sqrdev[i] = pow(sumpop[i]-idealpop, 2)
+    deviation_ = sum(absdev)
     deviation_ = round(deviation_)
+    #deviation_ = sum(sqrdev)
+    #deviation_ = round(deviation_)
     return(deviation_)
     
 #%%
@@ -470,13 +479,11 @@ def main(*args):
     county_list = [row.getValue (in_county_field) for row in arcpy.SearchCursor (out_table)] #Gets original county values
     county_list = list(map(int, county_list)) #Converts strings to integers
     county_list = sorted(list(set(county_list))) #sorts the list and deletes duplicate values
-    arcprint("county_list is {0}",county_list)
     county_dict = {}
     i=0
     for county in county_list:
         county_dict[county] = i #Populates a dictionary that associates each original county value with its sorted value
         i=i+1
-    arcprint("county_dict is {0}",county_dict)
     
     geo_unit_list = [[ ] for d in range(distcount)] #Amy, what does this do? ~Blake
     
@@ -513,7 +520,6 @@ def main(*args):
     with arcpy.da.SearchCursor(DistNbrList, ["src_Dist_Assgn", "nbr_Dist_Assgn"], """{}<{}""".format("src_Dist_Assgn", "nbr_Dist_Assgn")) as cursor:
         for row in cursor:
             DNP[tuple(sorted((row[0],row[1])))] = None #Eventually, each DNP will be associated with their population difference
-    arcprint("DistNbrPairs = {0}", DistNbrPairs)
     
     
     [DistrictStats, MapStats] = GraphMeasures.main(out_table, DistField,in_voteblue_field, in_votered_field) #Populates DistrictStats and MapStats using GraphMeasures
@@ -716,6 +722,8 @@ def main(*args):
         #arcprint("Total population in SC is {0}",sum(sumpop))
     
     #MAIN LOOP ENDS
+    arcprint("\n\nWe have finished the primary simulated annealing loop. Now entering phase two: Population adjustments.")
+    arcprint("Determining the boundarylist and boundarypairs...")
     [boundarylist,boundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG) # List of Geographical Units that sit on the boundary of their respective districts
     flag_for_flip=True
     contcount=0
@@ -756,15 +764,17 @@ def main(*args):
         cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population (highest pop first)
         
         for GU in cand_GU_dict:
+            arcprint("\nAttempting to move GU {0} from district {1} to district {2}", GU, updist, downdist)
             stateG.nodes[GU]["District Number"] = downdist #Executes the flip
             DistrictNodes = [n for n in stateG.nodes() if stateG.nodes[n]["District Number"] == updist] #Finds all nodes in updist
             sg_for_updist = stateG.subgraph(DistrictNodes)
             if nx.is_connected(sg_for_updist):
                 break
             else: #updist is no longer contiguous
+                arcprint("This flip would create a noncontiguous district. Trying a new GU.")
                 stateG.nodes[GU]["District Number"] = updist #Undoes the flip
-                if GU == list(cand_GU_dict.keys()[-1]): 
-                    arcprint("We have exhausted all candidate boundary GUs. Trying again with a new district pair")
+                if GU == list(cand_GU_dict.keys())[-1]: 
+                    arcprint("We have exhausted all candidate boundary GUs. Trying again with a new district pair.")
                     flag_for_flip = False
                     contcount += 1
                     
