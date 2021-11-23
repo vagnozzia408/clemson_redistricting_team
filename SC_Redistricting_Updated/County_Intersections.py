@@ -31,12 +31,12 @@ def CountIntersections2(dist1, dist2, Matrix, G, distcount):
     polys_in_dist2 = [node for node,y in G.nodes(data=True) if y["District Number"]==dist2] #Finds all polygons in district 2; creates list
     for p in polys_in_dist1:
         countynum = int(G.nodes[p]["County Number"]) #county number corresponding to the precinct in dist1
-        HypMatrix[dist1-1][int((countynum-1)/2)] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
+        HypMatrix[dist1-1][countynum] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
     for p in polys_in_dist2:
         countynum = int(G.nodes[p]["County Number"]) #county number corresponding to the precinct in dist2
-        HypMatrix[dist2-1][int((countynum-1)/2)] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
+        HypMatrix[dist2-1][countynum] +=1 #Because county numbers are calculated with odd numbers only, we use (countynum-1)/2 for indexing
     hypcount = np.count_nonzero(HypMatrix)-max(46,distcount) #Calculates the hypothetical number of nonzero entries in the Matrix. This is our number of CDIs
-    hypsquare = np.ndarray.sum(np.square(HypMatrix)) #Calculates the hypothetical sum of all squared entries in the Matrix. 
+    #hypsquare = np.ndarray.sum(np.square(HypMatrix)) #Calculates the hypothetical sum of all squared entries in the Matrix. 
     hypexcess_GU_mat = [0]*max(distcount,46)
     transpose = HypMatrix.transpose()
     idx=0
@@ -94,18 +94,21 @@ def main(*args):
     arcpy.env.workspace = path
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
-        in_table = sys.argv[1]
+        in_table = sys.argv[1] 
         distcount = sys.argv[2]
         in_dist_field = sys.argv[3]
+        county_field = sys.argv[4]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
-            in_table = args[0]
+            in_table = args[0] #out_table from main algorithm is sent into in_table
             distcount = args[1]
             in_dist_field = args[2]
+            county_field = args[3]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            in_table = path + "\\Precincts_2020_SA_7dists_701507575_100it"
+            in_table = path + "\\SC_Precincts_2021_v7_SA_7dists_10000"
             distcount = 7
             in_dist_field = "Dist_Assgn"
+            county_field = "County_Num"
             arcprint("We are using default input choices")
     
 #    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
@@ -117,14 +120,11 @@ def main(*args):
     units_in_CDI = np.zeros([distcount,46], dtype=int)
     
     #Adds 1 to the matrix element A[i,j] if there is a precinct in the ith district and jth county
-    with arcpy.da.SearchCursor(in_table, [in_dist_field,'County']) as cursor:
+    with arcpy.da.SearchCursor(in_table, [in_dist_field,county_field]) as cursor:
         for row in cursor:
-            units_in_CDI[int(row[0])-1][int((int(row[1])-1)/2)] +=1
+            units_in_CDI[int(row[0])-1][int(row[1])] +=1
     
     CDI_Count = np.count_nonzero(units_in_CDI) - max(distcount,46)
-    
-    #Squares each entry of the matrix and adds them all together
-    CDI_Square = np.sum(np.square(units_in_CDI))
     
     #GU stands for Geographical Unit. In this loop, we count the number of GUs in each county that are not in the most prevalent district
     excess_GU_mat = [0]*max(distcount,46)

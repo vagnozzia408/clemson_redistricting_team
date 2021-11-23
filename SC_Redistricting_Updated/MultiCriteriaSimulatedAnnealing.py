@@ -85,15 +85,18 @@ def Flip():
                         cursor.updateRow(row)''' 
 
 
-def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG,sumpop,popdev): 
-    connectionsToNewDist = [(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id]
+def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, sumpop, popdev): 
+    connectionsToNewDist = list(set([(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id]))
+    arcprint("connectionsToNewDist = {0}",connectionsToNewDist)
+    arcprint("boundarypairs = {0}",boundarypairs)
     for (p1,p2) in connectionsToNewDist:
         if p1 == src_id:
+            arcprint("(p1,p2) = {0}",(p1,p2))
             if stateG.nodes[p2]["District Number"] == new_dist:
-                boundarypairs.remove((p1,p2))
+                boundarypairs.remove([p1,p2])
         if p2 == src_id:
             if stateG.nodes[p1]["District Number"] == new_dist:
-                boundarypairs.remove((p1,p2))
+                boundarypairs.remove([p1,p2])
     for n in stateG.neighbors(src_id):
         if stateG.nodes[n]["District Number"] == cur_dist: 
             if n not in boundarylist: 
@@ -110,7 +113,7 @@ def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG,s
                 boundarylist.remove(n)    
                 stateG.nodes[n]["Boundary"] = 0
     
-    sumpop[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
+    sumpop[cur_dist-1] -= stateG.nodes[src_id]["Population"]
     sumpop[new_dist-1] += stateG.nodes[src_id]["Population"]
     popdev[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
     popdev[new_dist-1] += stateG.nodes[src_id]["Population"]
@@ -140,21 +143,27 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     stateG = hypstateG.copy()
     arcprint("The change was accepted!")
     
+    pairs_to_add = []
+    
     #Updates District Neighbor Pairs 
-    for d in DNP.keys():
-        potpair = [0,0] #potpair = potential pair
+    for d in DNP.keys(): #This loop will find all POSSIBLE District-Neighbor-Pairs that COULD have been created after the accepted change. 
+        potpair = (0,0) #potpair = potential pair
         if d[0]==dist1:
-            potpair = sorted([dist2,d[1]])
+            potpair = tuple(sorted((dist2,d[1]))) 
         elif d[0]==dist2:
-            potpair = sorted([dist1,d[1]])
+            potpair = tuple(sorted((dist1,d[1])))
         elif d[1]==dist1:
-            potpair = sorted([dist2,d[0]])
+            potpair = tuple(sorted((dist2,d[0])))
         elif d[1]==dist2:
-            potpair = sorted([dist1,d[0]])
-        if potpair[0]==potpair[1] or potpair in DNP.keys():
+            potpair = tuple(sorted((dist1,d[0])))
+        
+        if (potpair[0]==potpair[1]) or (potpair in DNP.keys()):
             continue
         else:
-            DNP[potpair]=None
+            pairs_to_add.append(potpair) #New pairs to be added to DNP
+
+    for p in pairs_to_add:
+        DNP[p] = None #Adds a new potential district-neigbor-pair to DNP
     
     #Updates the neighbor list table after each iteration
     #Note: nlf[3] = 'src_dist', nlf[4] = 'nbr_dist'
@@ -183,7 +192,7 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
             elif row[1] == dist2:
                 geo_unit_list[dist2-1].append(row[0])
             else :
-                arcerror("WE HAVE AN ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                arcerror("WE HAVE AN ERROR!")
     geo_unit_list[dist1-1].sort()
     geo_unit_list[dist2-1].sort()
     DistrictStats[dist1-1].ConfirmStats(True)
@@ -459,12 +468,15 @@ def main(*args):
     CountyField = "County_Num"
     
     county_list = [row.getValue (in_county_field) for row in arcpy.SearchCursor (out_table)] #Gets original county values
-    county_list = list(set(county_list)) #sorts the list and deletes duplicate values
+    county_list = list(map(int, county_list)) #Converts strings to integers
+    county_list = sorted(list(set(county_list))) #sorts the list and deletes duplicate values
+    arcprint("county_list is {0}",county_list)
     county_dict = {}
     i=0
     for county in county_list:
         county_dict[county] = i #Populates a dictionary that associates each original county value with its sorted value
-        i+=i
+        i=i+1
+    arcprint("county_dict is {0}",county_dict)
     
     geo_unit_list = [[ ] for d in range(distcount)] #Amy, what does this do? ~Blake
     
@@ -472,7 +484,7 @@ def main(*args):
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County",CountyField]) as cursor:
         for row in cursor:
             row[0] = row[1] #Dist_Assgn = CLUSTER_ID
-            row[4] = county_dict[row[3]] #County_Num = sorted county value (if there are n counties, then this value will be between 0 and n-1)
+            row[4] = county_dict[int(row[3])] #County_Num = sorted county value (if there are n counties, then this value will be between 0 and n-1)
             geo_unit_list[row[0]-1].append(row[2])
             cursor.updateRow(row)
     ucount = 0
@@ -510,7 +522,7 @@ def main(*args):
     fair = MapStats.MedianMean     #fair is a list of MedianMean scores
     
     #Populates County-District-Intersection (CDI) values
-    [units_in_CDI, CDI_Count,excess_GU] = County_Intersections.main(out_table,distcount,DistField)
+    [units_in_CDI, CDI_Count,excess_GU] = County_Intersections.main(out_table,distcount,DistField,CountyField)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}", fair)
     arcprint("CDI_Count = {0}", CDI_Count)
@@ -581,7 +593,7 @@ def main(*args):
         [dist1,dist2] = list(DistNbrPairs.keys())[r]
         whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
-        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<= sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
+        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<=sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
 #            dist1 = random.randint(1,distcount)
 #            dist2 = random.randint(1,distcount)
 #            if dist1 >dist2:
@@ -597,7 +609,7 @@ def main(*args):
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
         try:
-            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", CountyField, tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count -= 1
@@ -607,7 +619,7 @@ def main(*args):
             arcprint("We had a system error. Selecting new districts")
             count -= 1
             stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
-            del DNP[(dist1,dist2)]
+            del DNP[(dist1,dist2)] #Removes this tuple from District Neighbor Pairs, because dist1 and dist2 are not adjacent
             continue
         if dist1_pop==float('inf') or dist2_pop==float('inf'):
             count-=1
@@ -646,7 +658,7 @@ def main(*args):
         r_fairscore[count] = MapStats.HypMedianMean
         
         #CDI_Count_vals[count] = CDI_Count
-        [CDI_Count,CDI_Square,hyp_units_in_CDI,hyp_excess_GU] = County_Intersections.CountIntersections2(dist1,dist2,units_in_CDI,hypG,distcount)
+        [CDI_Count,hyp_units_in_CDI,hyp_excess_GU] = County_Intersections.CountIntersections2(dist1,dist2,units_in_CDI,hypG,distcount)
         CDI_Count_vals[count] = CDI_Count
         excess_GU_vals[count] = hyp_excess_GU
            
@@ -741,7 +753,7 @@ def main(*args):
             elif stateG.nodes[GU_0]["District Number"]==downdist and stateG.nodes[GU_1]["District Number"]==updist:
                 cand_GU_dict[GU_1] = stateG.nodes[GU_1]["Population"]
                 
-        cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population
+        cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population (highest pop first)
         
         for GU in cand_GU_dict:
             stateG.nodes[GU]["District Number"] = downdist #Executes the flip
@@ -759,7 +771,7 @@ def main(*args):
         
         if flag_for_flip == True:
             contcount=0
-            [boundarylist,boundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,boundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundary pairs
+            [boundarylist,boundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,boundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundarypairs
             popdiff = sumpop[updist-1]-sumpop[downdist-1]
             DNP[tuple(sorted((updist,downdist)))] = popdiff
             #Now check to see if DistNbrPairs changed
@@ -776,9 +788,7 @@ def main(*args):
                 
 
         
-    
-    #NEXT, NEED TO ADD FUNCTIONALITY THAT MOVES PRECINCTS ACROSS THE BOUNDARIES TO IMPROVE POPULATION BALANCE
-    
+    #CONCLUSION AREA
     arcprint("\n")
     if T<=0.01:
         arcprint("\nSmallest legal temperature reached T = {0}.", T)

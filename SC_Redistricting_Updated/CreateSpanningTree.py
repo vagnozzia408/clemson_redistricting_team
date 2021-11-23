@@ -198,13 +198,14 @@ def main(*args):
         shapefile=sys.argv[1]
         sf_pop_field = sys.argv[2]
         sf_name_field = sys.argv[3]
-        tol=float(sys.argv[4])
-        neighbor_list = sys.argv[5]
-        dist1=int(sys.argv[6])
-        dist2=int(sys.argv[7])
-        stateG = sys.argv[8]
-        p_list = sys.argv[9]
-        idealpop=float(sys.argv[10])
+        sf_county_field = sys.argv[4]
+        tol=float(sys.argv[5])
+        neighbor_list = sys.argv[6]
+        dist1=int(sys.argv[7])
+        dist2=int(sys.argv[8])
+        stateG = sys.argv[9]
+        p_list = sys.argv[10]
+        idealpop=float(sys.argv[11])
         del stateG #We can't insert a graph from the ArcGIS input line
         arcprint("Running CreateSpanningTree from command line arguments")
     except IndexError: 
@@ -212,13 +213,14 @@ def main(*args):
             shapefile = args[0]
             sf_pop_field = args[1]
             sf_name_field = args[2]
-            tol = float(args[3])
-            neighbor_list = args[4]
-            dist1 = int(args[5])
-            dist2 = int(args[6])
-            stateG = args[7]
-            p_list = args[8]
-            idealpop = args[9]
+            sf_county_field = args[3]
+            tol = float(args[4])
+            neighbor_list = args[5]
+            dist1 = int(args[6])
+            dist2 = int(args[7])
+            stateG = args[8]
+            p_list = args[9]
+            idealpop = args[10]
 #            arcprint("Running CreateSpanningTree using input from another script")
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
@@ -234,6 +236,7 @@ def main(*args):
             shapefile=path+"\\Precincts_2020_SA_7dists"
             sf_pop_field = "Precinct_P"
             sf_name_field = "OBJECTID"
+            sf_county_field = "County_Num"
             tol=30
             neighbor_list=path+"\\Precincts_2020_SA_7dists_nbr_list"
             dist1=6
@@ -297,7 +300,7 @@ def main(*args):
         for row in cursor:
             AdjFlag+=1
             if AdjFlag>=1:
-                arcprint("Adjacency Established between districts {0} and {1} by units {2} and {3}", dist1, dist2, row[0],row[1])
+                arcprint("Adjacency Established between districts {0} and {1} by geographic units {2} and {3}", dist1, dist2, row[0],row[1])
                 break
     del cursor
 
@@ -334,7 +337,7 @@ def main(*args):
                     stateG.add_edge(row[0],row[1])
                 distnum[row[0]]=row[3] #distnum[src_OBJECTID] = src_dist
             del cursor
-        with arcpy.da.SearchCursor(shapefile,[sf_name_field,"County"]) as cursor:
+        with arcpy.da.SearchCursor(shapefile,[sf_name_field,sf_county_field]) as cursor:
             for row in cursor:
                 cursor.reset
                 countynum[row[0]] = row[1] #Finds county number for each polygon
