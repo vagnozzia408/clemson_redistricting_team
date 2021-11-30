@@ -88,27 +88,34 @@ def Flip():
                         cursor.updateRow(row)''' 
 
 
-def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, sumpop, popdev): 
-    connectionsToNewDist = list(set([(p1,p2) for (p1,p2) in boundarypairs if p1 == src_id or p2 == src_id])) #List of boundary pairs that contain src_id as an entry
+def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, Districtboundarypairs, stateG, sumpop, popdev): 
     arcprint("Flipping GU {0} from district {1} to district {2}", src_id, cur_dist, new_dist)
     #arcprint("src_id = {0}", src_id)
     #arcprint("connectionsToNewDist = {0}",connectionsToNewDist)
     #arcprint("boundarypairs = {0}",boundarypairs)
     
-    #The following 'for' loop removes [p1,p2] from boundarylist if both p1 and p2 are in new_dist (and therefore not a boundarypair anymore)
-    for (p1,p2) in connectionsToNewDist:
-        if p1 == src_id:
-            if stateG.nodes[p2]["District Number"] == new_dist:
-                boundarypairs.remove([p1,p2])
-        elif p2 == src_id:
-            if stateG.nodes[p1]["District Number"] == new_dist:
-                boundarypairs.remove([p1,p2])
+    # Distboundarypairs[cur_dist-1] should no longer have pairs involving src_id. They should either be removed completely (otherside is in new_dist), or moved to new_dist.
+    PairsToMove = [pair for pair in Districtboundarypairs[cur_dist-1] if pair[0] == src_id]
+    #arcprint("We have {0} pairs that need to be moved or removed: {1}", len(PairsToMove), PairsToMove)
+    for pair in PairsToMove:
+        #if pair[0] == src_id:
+        Districtboundarypairs[cur_dist-1].remove((pair[0],pair[1]))
+        #arcprint("Removing {0} from District {1}", pair, cur_dist)
+        if stateG.nodes[pair[1]]["District Number"] == new_dist:
+            Districtboundarypairs[new_dist-1].remove((pair[1],pair[0]))
+            #arcprint("Removing {0} from District {1}", (pair[1],pair[0]), new_dist)
+        else :
+            Districtboundarypairs[new_dist-1].append(pair)
+            #arcprint("Adding {0} to District {1}", pair, new_dist)
     for n in stateG.neighbors(src_id):
         if stateG.nodes[n]["District Number"] == cur_dist: 
             if n not in boundarylist: 
                  boundarylist.append(n)
                  stateG.nodes[n]["Boundary"] = 1
-            boundarypairs.append(list(sorted((src_id,n))))
+            Districtboundarypairs[new_dist-1].append((src_id,n))
+            #arcprint("Adding {0} to District {1}", (src_id,n), new_dist)
+            Districtboundarypairs[cur_dist-1].append((n,src_id))
+            #arcprint("Adding {0} to District {1}", (n,src_id), cur_dist)
         elif stateG.nodes[n]["District Number"] == new_dist: 
             connectionToBoundary = False
             for nn in stateG.neighbors(n):
@@ -124,10 +131,13 @@ def FlipUpdate(src_id, cur_dist, new_dist, boundarylist, boundarypairs, stateG, 
     popdev[cur_dist-1] -= stateG.nodes[src_id]["Population"] 
     popdev[new_dist-1] += stateG.nodes[src_id]["Population"]
     
-    boundarypairs = sorted(boundarypairs)
+    Districtboundarypairs[cur_dist-1] = sorted(Districtboundarypairs[cur_dist-1])
+    Districtboundarypairs[new_dist-1] = sorted(Districtboundarypairs[new_dist-1])
+    #arcprint("Boundary pairs for Updist({0}): {1}", cur_dist, Districtboundarypairs[cur_dist-1])
+    #arcprint("Boundary pairs for Downdist({0}): {1}", new_dist, Districtboundarypairs[new_dist-1])
     boundarylist = sorted(boundarylist)
     
-    return(boundarylist, boundarypairs,stateG,sumpop,popdev)
+    return(boundarylist, Districtboundarypairs,stateG,sumpop,popdev)
     
 
 def DeviationFromIdealPop(sumpop,idealpop,distcount):
@@ -222,30 +232,35 @@ def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_ta
     #return(T,sumpop,stateG,neighbor_list,DistrictStats)
     return(T,sumpop,stateG,neighbor_list,DistrictStats,MapStats, units_in_CDI, geo_unit_list, DNP)
     
-def FindBoundaryUnits(nbrlist, G): #Finds the list of geographic units that are on district boundaries
+def FindBoundaryUnits(nbrlist, G, distcount): #Finds the list of geographic units that are on district boundaries
     boundarylist= [] #Creates a list that will contain all boundary shapes
-    boundarypairs = [] #Creates a list that will contain all pairs of adjacent geographic units in different districts
+    Districtboundarypairs = [ [] for i in range(distcount)] #Creates a list that will contain all pairs of adjacent geographic units in different districts
     
     for v in G.nodes: G.nodes[v]["Boundary"] = 0 #Initializes all nodes in the graph to *not* be on a boundary
     
+    countingEntries = 0
     #THE FOLLOWING LIST NEEDS TO BE GENERALIZED MORE
     nbrlist_fields = ['src_OBJECTID', 'nbr_OBJECTID', 'src_dist', 'nbr_dist', 'NODE_COUNT'] 
     with arcpy.da.SearchCursor(nbrlist, nbrlist_fields) as cursor:
         for row in cursor:
             if row[2] != row[3] and row[4] ==0: #If districts are different and they are adjacent by edges (NODE_COUNT=0)
+                countingEntries += 1
                 if row[0] not in boundarylist:
                     boundarylist.append(row[0])
                     G.nodes[row[0]]["Boundary"] = 1
                 if row[1] not in boundarylist:
                     boundarylist.append(row[1])
                     G.nodes[row[1]]["Boundary"] = 1
-                if sorted([row[0],row[1]]) not in boundarypairs:
-                    boundarypairs.append(sorted([row[0],row[1]]))
+                if (row[0],row[1]) not in Districtboundarypairs[row[2]-1]:
+                    Districtboundarypairs[row[2]-1].append((row[0],row[1]))
                     
     boundarylist = sorted(boundarylist)
-    boundarypairs = sorted(boundarypairs)
-    
-    return(boundarylist, boundarypairs, G) 
+    ActualEntries = 0
+    for d in range(len(Districtboundarypairs)):
+        Districtboundarypairs[d]=sorted(Districtboundarypairs[d])
+        ActualEntries += len(Districtboundarypairs[d])
+    arcprint("CountingEntries = {0}, and ActualEntries = {1}", countingEntries, ActualEntries)
+    return(boundarylist, Districtboundarypairs, G) 
     
 def UpdateBoundaryList(nbrlist, unit, boundarylist, boundarypairs, G): #Updates the boundary list after a single geographic unit (GU) is moved from one district to another. 
     unit_nbrs = [] #Established a list that will contain all geographic units adjacent to the single moved GU 
@@ -393,7 +408,7 @@ def main(*args):
             tol=30
             maxstopcounter=50
             alpha = [1,0,0,0,0]
-            NamingConvention ="_10000"
+            NamingConvention ="_Flip"
             pop_perc = 5
             arcprint("We are using default input choices")
     
@@ -721,23 +736,25 @@ def main(*args):
                 
         #arcprint("Total population in SC is {0}",sum(sumpop))
     
-    #MAIN LOOP ENDS
+   #MAIN LOOP ENDS
     arcprint("\n\nWe have finished the primary simulated annealing loop. Now entering phase two: Population adjustments.")
     arcprint("Determining the boundarylist and boundarypairs...")
-    [boundarylist,boundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG) # List of Geographical Units that sit on the boundary of their respective districts
+    [boundarylist,Districtboundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG,distcount) # List of Geographical Units that sit on the boundary of their respective districts
     flag_for_flip=True
     contcount=0
     
     popdev = [0]*distcount
     for i in range(len(popdev)):
         popdev[i] = sumpop[i]-idealpop
-    
+        
     for distpair in DNP: 
         dist1= distpair[0]
         dist2= distpair[1]
         popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
         DNP[tuple(sorted(distpair))] = popdiff
     
+    #arcprint("DNP contains: {0}", DNP)
+    FlipCount = 0
     while max([abs(pop) for pop in popdev])> pop_perc/100*idealpop: #While any district population is outside the target window
         #The following loop finds the two neighboring districts with the biggest gap in population
         DNP = dict(sorted(DNP.items(), key=lambda item: item[1],reverse=True)) #Sorts dictionary by popdiff
@@ -749,20 +766,15 @@ def main(*args):
         else:
             updist = dist2
             downdist = dist1
-        
-        #Want a list of boundary pairs for each set of adjacent districts. Then instead of iterating through boundarypairs, we can iterate through a smaller list
+        arcprint("We have selected updist {0} and downdist {1}", updist, downdist)
         
         cand_GU_dict = {} #Candidate Geographical Unit Dictionary. This dictionary will contain all GUs that can be moved from updist to downdist along with their populations
-        for GU_pair in boundarypairs:
-            GU_0 = GU_pair[0]
-            GU_1 = GU_pair[1]
-            if stateG.nodes[GU_0]["District Number"]==updist and stateG.nodes[GU_1]["District Number"]==downdist:
-                cand_GU_dict[GU_0] = stateG.nodes[GU_0]["Population"]
-            elif stateG.nodes[GU_0]["District Number"]==downdist and stateG.nodes[GU_1]["District Number"]==updist:
-                cand_GU_dict[GU_1] = stateG.nodes[GU_1]["Population"]
+        for GU_pair in Districtboundarypairs[updist-1]:
+            if stateG.nodes[GU_pair[1]]["District Number"] == downdist:
+                cand_GU_dict[GU_pair[0]] = stateG.nodes[GU_pair[0]]["Population"]
                 
         cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population (highest pop first)
-        
+        #arcprint("cand_GU_dict is {0}", cand_GU_dict)
         for GU in cand_GU_dict:
             arcprint("\nAttempting to move GU {0} from district {1} to district {2}", GU, updist, downdist)
             stateG.nodes[GU]["District Number"] = downdist #Executes the flip
@@ -781,22 +793,38 @@ def main(*args):
         
         if flag_for_flip == True:
             contcount=0
-            [boundarylist,boundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,boundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundarypairs
+            [boundarylist,Districtboundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,Districtboundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundarypairs
             popdiff = sumpop[updist-1]-sumpop[downdist-1]
             DNP[tuple(sorted((updist,downdist)))] = popdiff
             #Now check to see if DistNbrPairs changed
-            for pair in boundarypairs:
-                dist1 = stateG.nodes[pair[0]]["District Number"]
-                dist2 = stateG.nodes[pair[1]]["District Number"]
-                if not (tuple(sorted((dist1,dist2))) in DNP.keys()):
-                    popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
-                    DNP[tuple(sorted((dist1,dist2)))] = popdiff
-            #updist is the only district that could lose a district neighbor
-            #downdist is the only district that could gain a district neighbor
-
-            #DNP may lose entries. How to account for that? Maybe we don't.
+            #updist could lose a district neighbor, so we check all DNP keys it is involved in
+            for dpairs in list(DNP.keys()):
+                StillThere = False 
+                if dpairs[0] == updist and dpairs[1] != downdist:
+                    otherdist = dpairs[1]
+                elif dpairs[1] == updist and dpairs[0] != downdist:
+                    otherdist = dpairs[0]
+                else :
+                    continue
+                for pair in Districtboundarypairs[updist-1]:
+                    if stateG.nodes[pair[1]]["District Number"] == otherdist:
+                        StillThere = True
+                        break
+                if StillThere != True:
+                    DNP.pop(dpairs)
+            for pair in Districtboundarypairs[downdist-1]: #downdist could gain a district neighbor, we check its Districtboundarypairs for ones not included in DNP
+                if stateG.nodes[pair[1]]["District Number"] != updist:
+                    otherdist = stateG.nodes[pair[1]]["District Number"]
+                    if not (tuple(sorted((downdist,otherdist))) in DNP.keys()):
+                        popdiff = max(sumpop[downdist-1],sumpop[otherdist-1])-min(sumpop[downdist-1],sumpop[otherdist-1])
+                        DNP[tuple(sorted((downdist,otherdist)))] = popdiff
+            arcprint("Completed Flip, {0} now belongs to district {1}", GU, downdist)
+            FlipCount += 1
                 
-
+    if max([abs(pop) for pop in popdev]) <= pop_perc/100*idealpop:
+        arcprint("I think we have succeeded. In {0} Flips, we have now reached a population tolerance of {1}.", FlipCount, max([abs(pop) for pop in popdev]))
+        arcprint("PopDev: {0}", popdev)
+        arcprint("Sumpop: {0}", sumpop)
         
     #CONCLUSION AREA
     arcprint("\n")
