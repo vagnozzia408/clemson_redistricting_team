@@ -400,7 +400,7 @@ def main(*args):
             in_county_field = "COUNTY"
             in_voteblue_field = "PresBlue"
             in_votered_field = "PresRed"
-            distcount=15
+            distcount=16
             MaxIter=100
             T = 20
             FinalT = 0.1
@@ -617,16 +617,11 @@ def main(*args):
             tol = origtol/4
         if count==round(7*MaxIter/8) and stopcounter==0:
             tol = origtol/8
-        arcprint("\ncount = {0}. About to add 1. stopcounter={1}. If this gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
         count = count+1
-#        dist1 = random.randint(1,distcount)
-#        dist2 = random.randint(1,distcount)
-#        if dist1 >dist2: #Orders the districts so that dist1 is smaller
-#            temp = dist2
-#            dist2 = dist1
-#            dist1 = temp
+        arcprint("\ncount = {0}. stopcounter={1}. If stopcounter gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
+        
         r= random.randint(0,len(DistNbrPairs)-1)
-        [dist1,dist2] = list(DistNbrPairs.keys())[r]
+        [dist1,dist2] = list(DistNbrPairs.keys())[r] #Selects a random district neighbor pair
         whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
         while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<=sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
@@ -642,6 +637,8 @@ def main(*args):
             if whilecount % 100 ==0:
                 arcprint("We searched through {0} new district pairs and couldn't find any that met our criteria.",whilecount)
                 arcprint("sumpop = {0}",sumpop)
+            if whilecount == 1000:
+                arcerror("We searched through {0} district pairs and couldn't find any that met our criteria. Killing the process.", whilecount)
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
         try:
@@ -657,7 +654,7 @@ def main(*args):
             stopcounter += 0 #We don't want non-adjacent district choices to contribute to stopcounter
             del DNP[(dist1,dist2)] #Removes this tuple from District Neighbor Pairs, because dist1 and dist2 are not adjacent
             continue
-        if dist1_pop==float('inf') or dist2_pop==float('inf'):
+        if dist1_pop==-1 or dist2_pop==-1: #This occurs if no subgraphs with the appropriate tolerance were found.
             count-=1
             stopcounter+=1
             continue
@@ -724,7 +721,7 @@ def main(*args):
         arcprint("DeltaE = {0}. T = {1}.",DeltaE,T)
         
         if DeltaE <0: #An improvement!
-            [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistrictNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+            [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -737,7 +734,7 @@ def main(*args):
                 arcerror("p was nan")
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
-                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistrictNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+                [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -779,8 +776,9 @@ def main(*args):
     
     #arcprint("DNP contains: {0}", DNP)
     FlipCount = 0
+    #The following loop finds the two neighboring districts with the biggest gap in population
     while max([abs(pop) for pop in popdev])> pop_perc/100*idealpop: #While any district population is outside the target window
-        #The following loop finds the two neighboring districts with the biggest gap in population
+        arcprint("Population requirements haven't been met. Largest deviation is {0}. Need < {1}", max([abs(pop) for pop in popdev]), pop_perc/100*idealpop)
         DNP = dict(sorted(DNP.items(), key=lambda item: item[1],reverse=True)) #Sorts dictionary by popdiff
         dist1 = list(DNP.keys())[contcount][0]
         dist2 = list(DNP.keys())[contcount][1]
@@ -811,7 +809,7 @@ def main(*args):
                 arcprint("This flip would create a noncontiguous district. Trying a new GU.")
                 stateG.nodes[GU]["District Number"] = updist #Undoes the flip
                 if GU == list(cand_GU_dict.keys())[-1]: 
-                    arcprint("We have exhausted all candidate boundary GUs. Trying again with a new district pair.")
+                    arcprint("We have exhausted all candidate boundary GUs. Trying again with a new district pair.\n")
                     flag_for_flip = False
                     contcount += 1
                     

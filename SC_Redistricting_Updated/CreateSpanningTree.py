@@ -29,7 +29,7 @@ a spanning tree on the resulting subgraph.
 
 import arcpy, os, sys
 import random
-#seed = 1743
+seed = 1738
 #random.seed(seed)
 #from random import randint
 import networkx as nx
@@ -129,7 +129,7 @@ def FindEdgeCut(tree,tol,criteria,idealpop):
             return(dist_crit1,dist_crit2,subgraphs_lst)
         if i==TELL-1:
             arcprint("No subgraphs with appropriate criteria requirements were found. Required {0} iterations.\n",i+1)
-            return(float('inf'), float('inf'),[]) 
+            return(-1, -1, []) #Return populations of -1 if no appropriate subgraphs were found.
 
 def arcprint(message,*variables):
     '''Prints a message using arcpy.AddMessage() unless it can't; then it uses print. '''
@@ -398,7 +398,7 @@ def main(*args):
     dist1_pop = 0
     dist2_pop = 0
     #This next section of code decides which subgraph should become district 1 and which should become district 2
-    if sub0_pop!=float('inf') and sub1_pop!=float('inf'):
+    if sub0_pop!=-1 and sub1_pop!=-1:
         s0d1count=0
         s0d2count=0
         s1d1count=0
@@ -467,6 +467,9 @@ def main(*args):
                     arcerror("{0} is not assigned a proper district...", row[0])
                 cursor.updateRow(row)
 #        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
+    elif sub0_pop == -1 and sub1_pop == -1:
+        dist1_pop = -1
+        dist2_pop = -1
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
