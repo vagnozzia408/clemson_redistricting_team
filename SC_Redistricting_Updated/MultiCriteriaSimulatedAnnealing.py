@@ -370,8 +370,8 @@ def main(*args):
         tol = float(sys.argv[11])
         maxstopcounter = sys.argv[12]
         alpha = sys.argv[13]
-        NamingConvention = sys.argv[14]
-        pop_perc = sys.argv[15]
+        pop_perc = sys.argv[14]
+        NamingConvention = sys.argv[15]
     except IndexError: 
         try: #Second, tries to take input from explicit input into main()
             in_table = args[0]
@@ -388,8 +388,8 @@ def main(*args):
             tol = float(args[10])
             maxstopcounter = args[11]
             alpha = args[12]
-            NamingConvention = args[13]
-            pop_perc = args[14]
+            pop_perc = args[13]
+            NamingConvention = args[14]
         except IndexError: #Finally, manually assigns input values if they aren't provided
 #            in_table=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
 #            in_pop_field = "SUM_Popula"
@@ -400,16 +400,17 @@ def main(*args):
             in_county_field = "COUNTY"
             in_voteblue_field = "PresBlue"
             in_votered_field = "PresRed"
-            distcount=7
-            MaxIter=10
+            distcount=15
+            MaxIter=100
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
             tol=30
             maxstopcounter=50
-            alpha = [1,0,0,0,0]
+            alpha = [1,1,1,1,1]
+            pop_perc = 15
             NamingConvention ="_Flip"
-            pop_perc = 5
+            
             arcprint("We are using default input choices")
     
     #Marking the start time of the run.
@@ -421,13 +422,12 @@ def main(*args):
     #alpha = metric_count*[0]
 #    for i in range(metric_count):
 #        alpha[i] = random.randint(1,1000)
-#    tot = sum(alpha)
-#    for i in range(metric_count):
-#        alpha[i] = alpha[i]/tot
-    #alpha = [1, 0, 0, 0, 0]
+    tot= sum(alpha)
+    for i in range(len(alpha)):
+        alpha[i] = alpha[i]/tot
     arcprint("alpha = {0}",alpha)
-    #if sum(alpha) !=1:
-    #    arcerror("The elements of alpha must sum to 1.")
+    if sum(alpha) !=1:
+        arcerror("The elements of alpha must sum to 1. alpha = {0}", alpha)
         
     origtol = tol
         
@@ -439,8 +439,7 @@ def main(*args):
     row_count = arcpy.GetCount_management(in_table).getOutput(0) #getOutput(0) returns the value at the first index position of a tool.
     row_count=int(row_count)
     
-    #MIGHT WANT TO MAKE OUT_TABLE HAVE A UNIQUE NAME
-    #out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists"
+    #Creates name for the output map
     out_table = in_table + "_SA_" + "{0}".format(distcount) + "dists" + NamingConvention
     #out_table = arcpy.CreateUniqueName(in_table + "_SA")
 
@@ -453,8 +452,23 @@ def main(*args):
             row[0] = random.randint(1,100000)
             cursor.updateRow(row)
     arcprint("Running Spatially Constrained Multivariate Clustering to create initial map...")
-    arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
-    ###NEED TO ADDRESS ExecuteError where it can't find district with max/min constraints
+    
+    mapflag = False
+    failcount = 0
+    while mapflag == False:
+        try:
+            arcpy.stats.SpatiallyConstrainedMultivariateClustering(in_table,out_table, "Test_val",size_constraints="NUM_FEATURES", min_constraint=0.65*row_count/distcount,  number_of_clusters=distcount, spatial_constraints="CONTIGUITY_EDGES_ONLY")
+            mapflag = True
+        except arcpy.ExecuteError: #Occurs if SCMC cannot create a map with the given constraints
+            arcprint("Attempt number {0} at using Spatially Constrained Multivariate Clustering (SCMC) failed. Trying again.", failcount)
+            failcount = failcount +1
+            if failcount >=21:
+                arcerror("{0} attempts failed to produce a starting map for SCMC.",failcount)
+            mapflag = False
+            with arcpy.da.UpdateCursor(in_table, 'Test_val') as cursor: #Resets the random values
+                for row in cursor:
+                    row[0] = random.randint(1,100000)
+                    cursor.updateRow(row)
     
     
     #Adds populations as a column in out_table
@@ -467,26 +481,19 @@ def main(*args):
     #Adds county numbers to out_table
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_county_field)
     
-    #Creates a column named "temp_dist" and zeros it out
-    if not arcpy.ListFields(out_table, "temp_dist"):
-        arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
-    with arcpy.da.UpdateCursor(out_table, "temp_dist") as cursor:
-        for row in cursor: 
-            row[0] = 0
-            cursor.updateRow(row)
+    #Amy, this is unnecessary, right?
+#    #Creates a column named "temp_dist" and zeros it out
+#    if not arcpy.ListFields(out_table, "temp_dist"):
+#        arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
+#    with arcpy.da.UpdateCursor(out_table, "temp_dist") as cursor:
+#        for row in cursor: 
+#            row[0] = 0
+#            cursor.updateRow(row)
     
     #Assigns DistField as "Dist_Assgn" and creates the field if it's not already there
     if not arcpy.ListFields(out_table, "Dist_Assgn"):
         arcpy.AddField_management(out_table, "Dist_Assgn", "SHORT", field_alias="DIST_ASSIGNMENT")
     DistField="Dist_Assgn"
-
-    #Runs CreateNeighborList and returns the name of the neighbor_list
-    neighbor_list = CreateNeighborList.main(out_table)
-    arcprint("Deleting all rows from neighbor list with single-point adjacencies...")
-    with arcpy.da.UpdateCursor(neighbor_list, "NODE_COUNT") as cursor:
-        for row in cursor:
-            if row[0] > 0:
-                cursor.deleteRow() #Deletes all rows with that have single-point adjacency
 
     arcpy.AddField_management(out_table, "County_Num", "SHORT", field_alias="County_Num")
     CountyField = "County_Num"
@@ -502,7 +509,7 @@ def main(*args):
     
     geo_unit_list = [[ ] for d in range(distcount)] #Amy, what does this do? ~Blake
     
-    # Copies all CLUSTER_ID's into Dist_Assgn
+    # Copies all CLUSTER_ID's into Dist_Assgn and adds updated county numbers to out_table
     with arcpy.da.UpdateCursor(out_table, [DistField,"CLUSTER_ID", "SOURCE_ID","County",CountyField]) as cursor:
         for row in cursor:
             row[0] = row[1] #Dist_Assgn = CLUSTER_ID
@@ -514,8 +521,16 @@ def main(*args):
         ucount += 1
         unit.sort()
         #arcprint("At the start, the total number of geographic units in District{0} is {1}.", ucount, len(unit))
+        
+    #Runs CreateNeighborList and returns the name of the neighbor_list
+    neighbor_list = CreateNeighborList.main(out_table)
+    arcprint("Deleting all rows from neighbor list with single-point adjacencies...")
+    with arcpy.da.UpdateCursor(neighbor_list, "NODE_COUNT") as cursor:
+        for row in cursor:
+            if row[0] > 0:
+                cursor.deleteRow() #Deletes all rows with that have single-point adjacency
     
-    #Finds sum of each district population
+    #Finds each district population by summing all geographical units
     sumpop=[]
     sumpop = [0]*distcount
     with arcpy.da.SearchCursor(out_table, [in_pop_field,DistField]) as cursor:
@@ -525,9 +540,9 @@ def main(*args):
             i = int(i)
             sumpop[i] = row[0] + sumpop[i]
     idealpop=round(sum(sumpop)/distcount)
-    arcprint("The sum of unit populations (i.e. sumpop) is {0}. Thus, the ideal population for a district is {1}.",sumpop,idealpop)
+    arcprint("The starting population of each district (i.e. sumpop) is {0}. Thus, the ideal population for a district is {1}.",sumpop,idealpop)
     
-     #Finds the starting list of district neighbors
+    #Finds the starting list of district neighbors
     DistNbrList = out_table + "_dist_nbr_list"
     DistNbrPairs = {}
     DNP = DistNbrPairs #An alias
@@ -736,18 +751,27 @@ def main(*args):
                 
         #arcprint("Total population in SC is {0}",sum(sumpop))
     
-   #MAIN LOOP ENDS
+   #Phase I ends. Starting Phase II
     arcprint("\n\nWe have finished the primary simulated annealing loop. Now entering phase two: Population adjustments.")
+    
+    #Finds the starting list of district neighbors
+    DistNbrList = out_table + "_dist_nbr_list"
+    DistNbrPairs = {}
+    DNP = DistNbrPairs #An alias
+    arcpy.analysis.PolygonNeighbors(out_table, DistNbrList, DistField,both_sides = "NO_BOTH_SIDES")
+    with arcpy.da.SearchCursor(DistNbrList, ["src_Dist_Assgn", "nbr_Dist_Assgn"], """{}<{}""".format("src_Dist_Assgn", "nbr_Dist_Assgn")) as cursor:
+        for row in cursor:
+            DNP[tuple(sorted((row[0],row[1])))] = None #Eventually, each DNP will be associated with their population difference
+    
     arcprint("Determining the boundarylist and boundarypairs...")
     [boundarylist,Districtboundarypairs,stateG] = FindBoundaryUnits(neighbor_list,stateG,distcount) # List of Geographical Units that sit on the boundary of their respective districts
-    flag_for_flip=True
     contcount=0
     
     popdev = [0]*distcount
     for i in range(len(popdev)):
         popdev[i] = sumpop[i]-idealpop
         
-    for distpair in DNP: 
+    for distpair in list(DNP.keys()): 
         dist1= distpair[0]
         dist2= distpair[1]
         popdiff = max(sumpop[dist1-1],sumpop[dist2-1])-min(sumpop[dist1-1],sumpop[dist2-1])
@@ -775,12 +799,13 @@ def main(*args):
                 
         cand_GU_dict = dict(sorted(cand_GU_dict.items(), key=lambda item: item[1],reverse=True)) #Sorts the dictionary by population (highest pop first)
         #arcprint("cand_GU_dict is {0}", cand_GU_dict)
-        for GU in cand_GU_dict:
-            arcprint("\nAttempting to move GU {0} from district {1} to district {2}", GU, updist, downdist)
+        for GU in list(cand_GU_dict.keys()):
+            arcprint("Attempting to move GU {0} from district {1} to district {2}", GU, updist, downdist)
             stateG.nodes[GU]["District Number"] = downdist #Executes the flip
             DistrictNodes = [n for n in stateG.nodes() if stateG.nodes[n]["District Number"] == updist] #Finds all nodes in updist
             sg_for_updist = stateG.subgraph(DistrictNodes)
             if nx.is_connected(sg_for_updist):
+                flag_for_flip = True
                 break
             else: #updist is no longer contiguous
                 arcprint("This flip would create a noncontiguous district. Trying a new GU.")
@@ -818,7 +843,7 @@ def main(*args):
                     if not (tuple(sorted((downdist,otherdist))) in DNP.keys()):
                         popdiff = max(sumpop[downdist-1],sumpop[otherdist-1])-min(sumpop[downdist-1],sumpop[otherdist-1])
                         DNP[tuple(sorted((downdist,otherdist)))] = popdiff
-            arcprint("Completed Flip, {0} now belongs to district {1}", GU, downdist)
+            arcprint("Completed Flip, {0} now belongs to district {1}\n", GU, downdist)
             FlipCount += 1
                 
     if max([abs(pop) for pop in popdev]) <= pop_perc/100*idealpop:
