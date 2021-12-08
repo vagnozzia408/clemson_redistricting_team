@@ -314,6 +314,8 @@ def arcprint(message,*variables):
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            if type(variables[j]) == float:
+                variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
@@ -328,6 +330,8 @@ def arcerror(message,*variables):
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            if type(variables[j]) == float:
+                variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         raise RuntimeError(newmessage)
@@ -400,7 +404,7 @@ def main(*args):
             in_county_field = "COUNTY"
             in_voteblue_field = "PresBlue"
             in_votered_field = "PresRed"
-            distcount=16
+            distcount=46
             MaxIter=100
             T = 20
             FinalT = 0.1
@@ -641,6 +645,7 @@ def main(*args):
                 arcerror("We searched through {0} district pairs and couldn't find any that met our criteria. Killing the process.", whilecount)
         arcprint("dist1 = {0} and dist2 = {1}. tol= {2}.", dist1,dist2,tol)
         arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
+        
         try:
             [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", CountyField, tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
@@ -677,6 +682,7 @@ def main(*args):
 #        arcprint("Number of precincts in: TempDist1 = {0}, TempDist2 = {1}, NotGonnaMove = {2}, So the total number of precincts is: {3}", TempDist1, TempDist2, NotGonnaMove,  TempDist1 +TempDist2 + NotGonnaMove)
             
         #Populates entries of hypothetical population sum (hypsumpop) with the proposed dist1 and dist2 populations
+        hypsumpop = sumpop.copy()
         hypsumpop[dist1-1] = dist1_pop
         hypsumpop[dist2-1] = dist2_pop
         deviation[count] = DeviationFromIdealPop(hypsumpop,idealpop,distcount) #Calculates the absolute deviation from ideal for this proposed change. 
@@ -722,6 +728,7 @@ def main(*args):
         
         if DeltaE <0: #An improvement!
             [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+            cur_tot_pop = sum(sumpop)
             stopcounter=0
             continue
         else : #A worsening :(
@@ -735,6 +742,7 @@ def main(*args):
             arcprint("p = {0}. rand = {1}",p,rand)
             if rand<=p: #Worsening is accepted
                 [T,sumpop,stateG,neighbor_list,DistrictsStats,MapStats, units_in_CDI,geo_unit_list,DistNbrPairs] = acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI,geo_unit_list,DistNbrPairs)
+                cur_tot_pop = sum(sumpop)
                 stopcounter=0 #resets the stopcounter
                 continue
             else: #undoes the district changes previously made. 
@@ -850,18 +858,17 @@ def main(*args):
         arcprint("Sumpop: {0}", sumpop)
         
     #CONCLUSION AREA
-    arcprint("\n")
+    arcprint("\nPhase I Information:")
     if T<=0.01:
-        arcprint("\nSmallest legal temperature reached T = {0}.", T)
+        arcprint("\nSmallest legal temperature reached T = {0}. T cannot be smaller than 0.01.", T)
     if count >=MaxIter:
         arcprint("\nMaximum number of iterations reached. count = {0} and MaxIter = {1}", count, MaxIter)
     if stopcounter ==maxstopcounter:
-        arcprint("\nWe failed in {0} consecutive ReCom attempts, so we will stop here.",maxstopcounter)
+        arcprint("\nWe failed in {0} consecutive ReCom attempts, so Phase I ended early.",maxstopcounter)
     endPopDev = 0
     for i in range(distcount):
          endPopDev += abs(sumpop[i]-idealpop)
     arcprint("Starting Population Deviation was {0}, and Ending Population Deviation is {1}", startPopDev, endPopDev)
-    #arcprint("Original population deviation from ideal = {0}. Final population deviation = {1}",deviation[0],deviation[count])
     arcprint("Original Polsby Popper Compactness = {0}. Final Compactness = {1}",avgcomp[0],avgcomp[count])
     arcprint("Original Median_Mean Score = {0}. Final Median_Mean Score = {1}",r_fairscore[0],r_fairscore[count])
     arcprint("Original CDI_Count Score = {0}. Final CDI_Count Score = {1}",CDI_Count_vals[0],CDI_Count_vals[count])

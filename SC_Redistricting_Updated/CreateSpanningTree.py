@@ -139,6 +139,8 @@ def arcprint(message,*variables):
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            if type(variables[j]) == float:
+                variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
@@ -153,6 +155,8 @@ def arcerror(message,*variables):
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            if type(variables[j]) == float:
+                variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         raise RuntimeError(newmessage)
@@ -168,6 +172,8 @@ def arcerror2(message,*variables):
         newmessage=message
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
+            if type(variables[j]) == float:
+                variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         raise SystemError(newmessage)
