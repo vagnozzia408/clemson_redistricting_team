@@ -1,1 +1,0 @@
-sc_maps/census_blocks_2021/tl_2021_45_tabblock20.shp filter=lfs diff=lfs merge=lfs -text
