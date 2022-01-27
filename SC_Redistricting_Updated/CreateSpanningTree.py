@@ -140,6 +140,7 @@ def arcprint(message,*variables):
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             if type(variables[j]) == float:
+                variables = list(variables)
                 variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
@@ -156,6 +157,7 @@ def arcerror(message,*variables):
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             if type(variables[j]) == float:
+                variables = list(variables)
                 variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
@@ -472,7 +474,7 @@ def main(*args):
                 else:
                     arcerror("{0} is not assigned a proper district...", row[0])
                 cursor.updateRow(row)
-#        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precints not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
+#        arcprint("When updating temp_dist we counted the following things: {0} precincts in dist1, {1} precincts in dist2, {2} precincts not slated to move, giving us {3} total precincts", Subgraph1Count, Subgraph2Count, DontMoveCount, Subgraph1Count + Subgraph2Count + DontMoveCount)
     elif sub0_pop == -1 and sub1_pop == -1:
         dist1_pop = -1
         dist2_pop = -1

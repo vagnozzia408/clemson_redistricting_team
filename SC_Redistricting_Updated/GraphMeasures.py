@@ -269,10 +269,10 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueFiel
     arcpy.CheckOutExtension("Spatial")
     arcpy.sa.ZonalGeometryAsTable(inZoneData, zoneField, outTable)
     with arcpy.da.SearchCursor(outTable, "*", '''{}={} OR {}={}'''.format("Value",1,"Value",2)) as cursor:
-        for row in cursor:
-            if row[1] == 1:
+        for row in cursor: 
+            if row[1] == 1: #If the district is temp_dist1
                 DistrictList[dist1-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
-            elif row[1] == 2:
+            elif row[1] == 2: #If the district is temp_dist2
                 DistrictList[dist2-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
     for i in range(len(DistrictList)):
         if i != dist1 - 1 and i != dist2 -1:
@@ -346,6 +346,7 @@ def arcprint(message,*variables):
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             if type(variables[j]) == float:
+                variables = list(variables)
                 variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1

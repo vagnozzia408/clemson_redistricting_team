@@ -315,7 +315,9 @@ def arcprint(message,*variables):
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             if type(variables[j]) == float:
+                variables = list(variables)
                 variables[j] = round(variables[j],3)
+                #print(variables[j], " has type ", type(variables[j]))
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
         print(newmessage)
@@ -331,6 +333,7 @@ def arcerror(message,*variables):
         j=0
         while j<len(variables): #This while loop puts the variable(s) in the correct spot(s) in the string
             if type(variables[j]) == float:
+                variables = list(variables)
                 variables[j] = round(variables[j],3)
             newmessage = newmessage.replace("{"+str(j)+"}",str(variables[j])) #Replaces {i} with the ith variable
             j=j+1
@@ -353,7 +356,7 @@ def main(*args):
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
-    arcpy.env.workspace = path
+    #arcpy.env.workspace = path
     
     arcpy.env.overwriteOutput = True
     
@@ -404,8 +407,8 @@ def main(*args):
             in_county_field = "COUNTY"
             in_voteblue_field = "PresBlue"
             in_votered_field = "PresRed"
-            distcount=46
-            MaxIter=100
+            distcount=7
+            MaxIter=500
             T = 20
             FinalT = 0.1
             coolingrate = (FinalT/T)**(1/MaxIter)
@@ -455,7 +458,7 @@ def main(*args):
         for row in cursor:
             row[0] = random.randint(1,100000)
             cursor.updateRow(row)
-    arcprint("Running Spatially Constrained Multivariate Clustering to create initial map...")
+    arcprint("Running Spatially Constrained Multivariate Clustering to create the initial map...")
     
     mapflag = False
     failcount = 0
@@ -486,13 +489,13 @@ def main(*args):
     arcpy.management.JoinField(out_table, "SOURCE_ID", in_table, in_name_field, in_county_field)
     
     #Amy, this is unnecessary, right?
-#    #Creates a column named "temp_dist" and zeros it out
-#    if not arcpy.ListFields(out_table, "temp_dist"):
-#        arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
-#    with arcpy.da.UpdateCursor(out_table, "temp_dist") as cursor:
-#        for row in cursor: 
-#            row[0] = 0
-#            cursor.updateRow(row)
+    #Creates a column named "temp_dist" and zeros it out
+    if not arcpy.ListFields(out_table, "temp_dist"):
+        arcpy.AddField_management(out_table, "temp_dist", "SHORT", field_alias="Temporary District")
+    with arcpy.da.UpdateCursor(out_table, "temp_dist") as cursor:
+        for row in cursor: 
+            row[0] = 0
+            cursor.updateRow(row)
     
     #Assigns DistField as "Dist_Assgn" and creates the field if it's not already there
     if not arcpy.ListFields(out_table, "Dist_Assgn"):
@@ -757,7 +760,7 @@ def main(*args):
         #arcprint("Total population in SC is {0}",sum(sumpop))
     
    #Phase I ends. Starting Phase II
-    arcprint("\n\nWe have finished the primary simulated annealing loop. Now entering phase two: Population adjustments.")
+    arcprint("\n\nWe have finished the primary simulated annealing loop. Now entering Phase II: Population adjustments.")
     
     #Finds the starting list of district neighbors
     DistNbrList = out_table + "_dist_nbr_list"
@@ -786,7 +789,9 @@ def main(*args):
     FlipCount = 0
     #The following loop finds the two neighboring districts with the biggest gap in population
     while max([abs(pop) for pop in popdev])> pop_perc/100*idealpop: #While any district population is outside the target window
-        arcprint("Population requirements haven't been met. Largest deviation is {0}. Need < {1}", max([abs(pop) for pop in popdev]), pop_perc/100*idealpop)
+        max_pop = max([abs(pop) for pop in popdev])
+        max_pop_ind = [abs(pop) for pop in popdev].index(max_pop)
+        arcprint("Population requirements haven't been met. Largest deviation is {0} in district {1}. Need < {2}", max_pop, max_pop_ind+1, pop_perc/100*idealpop)
         DNP = dict(sorted(DNP.items(), key=lambda item: item[1],reverse=True)) #Sorts dictionary by popdiff
         dist1 = list(DNP.keys())[contcount][0]
         dist2 = list(DNP.keys())[contcount][1]
@@ -821,7 +826,6 @@ def main(*args):
                     flag_for_flip = False
                     contcount += 1
                     
-        
         if flag_for_flip == True:
             contcount=0
             [boundarylist,Districtboundarypairs,stateG,sumpop,popdev] = FlipUpdate(GU,updist,downdist,boundarylist,Districtboundarypairs,stateG,sumpop,popdev) #Updates boundarylist and boundarypairs
