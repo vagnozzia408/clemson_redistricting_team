@@ -1,1 +1,2 @@
 census_data_2010/tabblock2010_45_pophu.shp filter=lfs diff=lfs merge=lfs -text
+vagnozzi_redistricting_2021/sc_maps/census_blocks_2021/tl_2021_45_tabblock20.dbf filter=lfs diff=lfs merge=lfs -text
