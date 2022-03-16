@@ -31,20 +31,21 @@ class District:
     HypWastedRed = 0
     HypWastedBlue = 0
     HypBlueShare = 0
-    EfficiencyGap = 0 #This will be terms of the dist: wastedRed votes in this district - wastedblue votes in this district, divided by total number of votes
+    EfficiencyGap = 0  #This will be terms of the dist: wastedRed votes in this district - wastedblue votes in this district, divided by total number of votes
     HypEfficiencyGap = 0
     WinThreshold = 0
     HypWinThreshold = 0
     Original = True
+    Population = 0
     
     
     def __init__(self, ID):
         self.ID = ID
     
-    def UpdateStats(self, a, p, ppc, vcr, vcb, wr, wb, bs, eg, wt):
+    def UpdateStats(self, a, p, vcr, vcb, wr, wb, bs, eg, wt):
         self.Area = a
         self.Perimeter = p
-        self.ppCompactScore = ppc
+        self.ppCompactScore = 4 * math.pi * a / p ** 2  #Polsby-Popper score
         self.VoteCountRed = vcr
         self.VoteCountBlue = vcb
         self.WastedRed = wr
@@ -58,15 +59,15 @@ class District:
         self.Perimeter = p
         self.ppCompactScore = ppc
         
-    def UpdateHypStats(self, a, p, ppc):
+    def UpdateHypStats(self, a, p):
         self.HypArea = a
         self.HypPerimeter = p
-        self.HypppCompactScore = ppc
+        self.HypppCompactScore = 4 * math.pi * a / p ** 2  #Polsby-Popper score
         
     
     def ConfirmStats(self, status):
         if status == True:
-            self.UpdateStats(self.HypArea, self.HypPerimeter, self.HypppCompactScore, self.HypVoteCountRed, self.HypVoteCountBlue, self.HypWastedRed, self.HypWastedBlue, self.HypBlueShare, self.HypEfficiencyGap, self.HypWinThreshold)
+            self.UpdateStats(self.HypArea, self.HypPerimeter, self.HypVoteCountRed, self.HypVoteCountBlue, self.HypWastedRed, self.HypWastedBlue, self.HypBlueShare, self.HypEfficiencyGap, self.HypWinThreshold)
         self.HypArea = 0
         self.HypPerimeter = 0
         self.HypppCompactScore = 0
@@ -132,7 +133,7 @@ class Map:
                 self.HypWastedVotesRed += dis.HypWastedRed
                 self.HypWastedVotesBlue += dis.HypWastedBlue
                 Ashares[i+1] = dis.HypBlueShare
-                District_Efficiency_Gaps[i+1] = dis.HypEfficiencyGap
+                District_Efficiency_Gaps[i + 1] = dis.HypEfficiencyGap
            # print(Ashares)
             # Average Statewide Vote
             sum_vd = 0
@@ -152,7 +153,7 @@ class Map:
             #print("Democratic Seats Won: SV = " + str(sum_DEM_seats) + "/" + str(NUM_DISTRICTS) + " = " + str(SV))
             
             MED = statistics.median(Ashares.values())
-            MM=MED-V
+            MM = MED-V
             self.HypMedianMean = MM
             #print("MM = " + str(MM))
 #            
@@ -260,7 +261,7 @@ class Map:
         self.HypAvgStateWideVote = 0
         self.HypBlueSeatsWon = 0
         
-def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueField, voteRedField):
+def DistrictUpdateForHyp(dist1, dist2, shapefile, path, DistrictList, voteBlueField, voteRedField):
     #Create a Reduced Shapefile just based on dist1 and dist2, and update the appropriate districts in DistrictList
     inZoneData = shapefile
     zoneField = "temp_dist"
@@ -268,15 +269,15 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueFiel
     #cellSize = 1.28781240014216E-02
     arcpy.CheckOutExtension("Spatial")
     arcpy.sa.ZonalGeometryAsTable(inZoneData, zoneField, outTable)
-    with arcpy.da.SearchCursor(outTable, "*", '''{}={} OR {}={}'''.format("Value",1,"Value",2)) as cursor:
+    with arcpy.da.SearchCursor(outTable, "*", '''{}={} OR {}={}'''.format("Value", 1, "Value", 2)) as cursor:
         for row in cursor: 
-            if row[1] == 1: #If the district is temp_dist1
-                DistrictList[dist1-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
-            elif row[1] == 2: #If the district is temp_dist2
-                DistrictList[dist2-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+            if row[1] == 1:  #If the district is temp_dist1
+                DistrictList[dist1-1].UpdateHypStats(row[2], row[3])
+            elif row[1] == 2:  #If the district is temp_dist2
+                DistrictList[dist2-1].UpdateHypStats(row[2], row[3])
     for i in range(len(DistrictList)):
-        if i != dist1 - 1 and i != dist2 -1:
-            DistrictList[i].UpdateHypStats(DistrictList[i].Area, DistrictList[i].Perimeter, DistrictList[i].ppCompactScore)
+        if i != dist1 - 1 and i != dist2 - 1:
+            DistrictList[i].UpdateHypStats(DistrictList[i].Area, DistrictList[i].Perimeter)
     #return DistrictList
 
     #DistrictList[dist1 - 1].HypVoteCountRed = 0
@@ -301,9 +302,9 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueFiel
             dis.HypVoteCountBlue += 1
     #Calculate win threshold:
     if dis.HypVoteCountRed + dis.HypVoteCountBlue % 2 == 0:
-        dis.HypWinThreshold = (0.5*(dis.HypVoteCountRed + dis.HypVoteCountBlue)) + 1
+        dis.HypWinThreshold = (0.5 * (dis.HypVoteCountRed + dis.HypVoteCountBlue)) + 1
     else :
-        dis.HypWinThreshold = math.ceil(0.5*(dis.HypVoteCountRed + dis.HypVoteCountBlue))
+        dis.HypWinThreshold = math.ceil(0.5 * (dis.HypVoteCountRed + dis.HypVoteCountBlue))
     if dis.HypVoteCountRed > dis.HypVoteCountBlue:
         dis.HypWastedRed = dis.HypVoteCountRed - dis.HypWinThreshold
         dis.HypWastedBlue = dis.HypVoteCountBlue
@@ -311,9 +312,9 @@ def DistrictUpdateForHyp(dist1, dist2,shapefile, path, DistrictList,voteBlueFiel
         dis.HypWastedBlue = dis.HypVoteCountBlue - dis.HypWinThreshold
         dis.HypWastedRed = dis.HypVoteCountRed
     dis.HypBlueShare = dis.HypVoteCountBlue / (dis.HypVoteCountRed + dis.HypVoteCountBlue)
-    dis.HypEfficiencyGap = (dis.WastedBlue - dis.WastedRed)/(dis.VoteCountRed + dis.VoteCountBlue)
+    dis.HypEfficiencyGap = (dis.WastedBlue - dis.WastedRed) / (dis.VoteCountRed + dis.VoteCountBlue)
     
-    dis = DistrictList[dist2-1]
+    dis = DistrictList[dist2 - 1]
     if dis.HypVoteCountRed == dis.HypVoteCountBlue :
         ran = np.random.randint(2)
         if ran == 0:
@@ -358,27 +359,27 @@ def main(*args):
     ### MAIN CODE STARTS HERE
     global DistrictList
     global MapObject
-    global runspot #Allows runspot to be changed inside a function
+    global runspot  #Allows runspot to be changed inside a function
     global voteRedField
     global voteBlueField
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
         if __name__ == "__main__":
-            arcprint("We are running this from inside ArcGIS")
+            arcprint("We are running GraphMeasures.py from inside ArcGIS")
     else:
         runspot = "console"
-        if __name__=="__main__":
-            arcprint("We are running this from the python console")
+        if __name__ == "__main__":
+            arcprint("We are running GraphMeasures.py from the python console")
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
-    arcpy.env.workspace=path
+    arcpy.env.workspace = path
     arcpy.env.overwriteOutput=True
     arcpy.env.qualifiedFieldNames = False #Needed for AddJoin in Arcpy
     
     try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
-        shapefile=sys.argv[1]
+        shapefile = sys.argv[1]
         zoneField = sys.argv[2]
         voteBlueField = sys.argv[3]
         voteRedField = sys.argv[4]
@@ -389,7 +390,7 @@ def main(*args):
             voteBlueField = args[2]
             voteRedField = args[3]
         except IndexError: #Finally, manually assigns input values if they aren't provided
-            shapefile=path+"\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
+            shapefile = path + "\\tl_2020_45_county20_SpatiallyConstrainedMultivariateClustering1"
             zoneField = "Cluster_ID"
             voteBlueField = "PresBlue"
             voteRedField = "PresRed"
@@ -405,18 +406,22 @@ def main(*args):
     with arcpy.da.SearchCursor(outTable, "*", "*") as cursor:
         for row in cursor:
             DistrictList.append(District(row[1]))
-            DistrictList[-1].UpdateHypStats(row[2], row[3], 4*math.pi*float(row[2])/float(row[3])**2)
+            DistrictList[-1].UpdateHypStats(row[2], row[3])
     
 
     MapObject = Map(0)  
     
-    with arcpy.da.SearchCursor(shapefile, ["Dist_Assgn", voteBlueField, voteRedField], "*") as cursor:
+    with arcpy.da.SearchCursor(shapefile, ["Dist_Assign", voteBlueField, voteRedField], "*") as cursor:
         for row in cursor:
-            DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
-            DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])
+            try: 
+                DistrictList[int(row[0]) - 1].HypVoteCountRed += int(row[2])
+                DistrictList[int(row[0]) - 1].HypVoteCountBlue += int(row[1])
+            except TypeError:
+                DistrictList[int(row[0]) - 1].HypVoteCountRed += 0
+                DistrictList[int(row[0]) - 1].HypVoteCountBlue += 0
     
     for dis in DistrictList:
-        if dis.HypVoteCountRed == dis.HypVoteCountBlue :
+        if dis.HypVoteCountRed == dis.HypVoteCountBlue:
             ran = np.random.randint(2)
             if ran == 0:
                 dis.HypVoteCountRed += 1

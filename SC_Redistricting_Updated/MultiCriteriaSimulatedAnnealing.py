@@ -2,7 +2,7 @@
 """
 Created on Thu Apr 15 16:52:28 2021
 
-@author: Blake Splitter
+@author: Blake Splitter and Amy Burton
 """
 
 #TO DO LIST
@@ -156,7 +156,7 @@ def DeviationFromIdealPop(sumpop,idealpop,distcount):
     
 #%%
     
-def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI, geo_unit_list,DNP):
+def acceptchange(T,hypsumpop,hypstateG,hypG,dist1,dist2,nlf,neighbor_list,out_table,DistField,DistrictStats,MapStats, units_in_CDI, hyp_units_in_CDI, geo_unit_list, DNP):
     T=T*coolingrate
     sumpop = hypsumpop.copy()
     stateG = hypstateG.copy()
@@ -565,7 +565,7 @@ def main(*args):
     fair = MapStats.MedianMean     #fair is a list of MedianMean scores
     
     #Populates County-District-Intersection (CDI) values
-    [units_in_CDI, CDI_Count,excess_GU] = County_Intersections.main(out_table,distcount,DistField,CountyField)
+    [units_in_CDI, CDI_Count, excess_GU] = County_Intersections.main(out_table, distcount, DistField, CountyField)
     
     arcprint("The fairness scores for this map are: Median_Mean = {0}", fair)
     arcprint("CDI_Count = {0}", CDI_Count)
@@ -618,23 +618,23 @@ def main(*args):
     stopcounter=0 #The number of consecutive iterations in which a change was NOT made
     
     while T>0.1 and count<MaxIter and stopcounter<maxstopcounter:
-        if count==round(MaxIter/2) and stopcounter==0:
+        if count == round(MaxIter/2) and stopcounter==0:
             tol = origtol/2
-        if count==round(3*MaxIter/4) and stopcounter==0:
+        if count == round(3*MaxIter/4) and stopcounter==0:
             tol = origtol/4
-        if count==round(7*MaxIter/8) and stopcounter==0:
+        if count == round(7*MaxIter/8) and stopcounter==0:
             tol = origtol/8
         count = count+1
         arcprint("\ncount = {0}. stopcounter={1}. If stopcounter gets to {2}, we will stop the code.",count,stopcounter, maxstopcounter)
         
         r= random.randint(0,len(DistNbrPairs)-1)
-        [dist1,dist2] = list(DistNbrPairs.keys())[r] #Selects a random district neighbor pair
+        [dist1, dist2] = list(DistNbrPairs.keys())[r] #Selects a random district neighbor pair
         whilecount=0
         #Randomly selects two different districts or if code is halfway through, selects district with populations above and below idealpop
-        while dist1==dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<=sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
+        while dist1 == dist2 or (count>=MaxIter/2 and not(sumpop[dist1-1]<=idealpop<=sumpop[dist2-1]) and not(sumpop[dist1-1]>=idealpop>= sumpop[dist2-1])) or (dist1,dist2) not in DistNbrPairs.keys(): 
 #            dist1 = random.randint(1,distcount)
 #            dist2 = random.randint(1,distcount)
-#            if dist1 >dist2:
+#            if dist1 > dist2:
 #                temp = dist2
 #                dist2 = dist1
 #                dist1 = temp
@@ -650,7 +650,7 @@ def main(*args):
         arcprint("dist1_pop = {0} and dist2_pop = {1}, total_pop = {2}", sumpop[dist1-1], sumpop[dist2-1], sum(sumpop))
         
         try:
-            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists,neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", CountyField, tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
+            [dist1_pop, dist2_pop, hypstateG, hypG, nlf, prevdists, neighbor_list] = CreateSpanningTree.main(out_table, in_pop_field, "SOURCE_ID", CountyField, tol, neighbor_list, dist1, dist2, stateG, geo_unit_list,idealpop)
         except RuntimeError: #Cuts the code if we encounter a Runtime error in CreateSpanningTree
             arcprint("We had a runtime error. Selecting new districts")
             count -= 1

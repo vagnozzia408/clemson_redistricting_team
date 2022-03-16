@@ -2,7 +2,7 @@
 """
 Created on Thu May  6 17:21:17 2021
 
-@author: blake
+@author: Blake Splitter
 """
 import arcpy, os, sys
 import random
@@ -13,31 +13,30 @@ def FindNamingFields(in_table):
     lstFields = arcpy.ListFields(in_table)
     namefield = None
     distfield = None
-    breakflag=0
+    breakflag = 0
     for name in ["GEOID20", "OBJECTID", "FID", "SOURCE_ID"]:
         for field in lstFields:   
-            if name ==field.name:
+            if name == field.name:
                 namefield = name
-                breakflag=1
+                breakflag = 1
                 break
-        if breakflag==1:
+        if breakflag == 1:
             break
     if namefield == None:
         arcerror("No value for namefield was found.")
-    #if field.name in  ["GEOID20", "Name20", "NAME20", "Name", "FID", "SOURCE_ID"]:
-    breakflag=0
+    breakflag = 0
 
     for name in ["CLUSTER_ID", "ZONE_ID"]:
         for field in lstFields:
             if name == field.name:
                 distfield = name
-                breakflag=1
+                breakflag = 1
                 break
-        if breakflag==1:
+        if breakflag == 1:
             break
-    if distfield ==None:
+    if distfield == None:
         arcerror("No value for distfield was found. All polygons must be assigned a district in a field labeled 'CLUSTER_ID' or 'ZONE_ID'.")
-    return(namefield,distfield)
+    return(namefield, distfield)
 
 def MakeSQLExpression(in_row, fields4nbrlist):          
     comboexpression=None
@@ -97,8 +96,6 @@ def arcerror(message,*variables):
 ### START MAIN CODE
 def main(*args):
     global runspot
-    #global localvars
-    #localvars = {}
     
     if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
@@ -134,8 +131,8 @@ def main(*args):
     #Creates a neighbor list if one currently does not exist
     neighbor_list = in_table + "_nbr_list"
 
-#    if arcpy.Exists(neighbor_list)==False:
-    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield,distfield],None,None,None,"KILOMETERS")
+#    if arcpy.Exists(neighbor_list) == False:
+    arcpy.PolygonNeighbors_analysis(in_table, neighbor_list, [namefield, distfield], None, None, None, "KILOMETERS")
 
 ###EVERYTHING BELOW THIS LINE ATTEMPTS TO FIND WHICH POLYGONS ARE ON DISTRICT BOUNDARIES, WHICH IS NO LONGER NEEDED
 #    srcnamefield = "src_" + namefield

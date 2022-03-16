@@ -93,7 +93,7 @@ def wilson(graph, rng):
 
     return uniformTree
 
-def FindEdgeCut(tree,tol,criteria,idealpop):
+def FindEdgeCut(tree, tol, criteria, idealpop):
     '''Input a tree graph, a percent tolerance, and a criteria for the graph. The function will remove a 
     random edge that splits the tree into two pieces such that each piece 
     has criteria (like population) within that percent tolerance. The variable 'tol' should be a positive real 
@@ -402,7 +402,7 @@ def main(*args):
         nx.set_node_attributes(T,dict(G.nodes("District Number")),"District Number")
         
 #    [dist1_pop, dist2_pop,subgraphs] = FindEdgeCut(T,tol,"Population") #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
-    [sub0_pop, sub1_pop,subgraphs] = FindEdgeCut(T,tol,"Population",idealpop) #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
+    [sub0_pop, sub1_pop, subgraphs] = FindEdgeCut(T, tol, "Population", idealpop) #Removes an edge from T so that the Population of each subgraph is within tolerance (tol)
     dist1_pop = 0
     dist2_pop = 0
     #This next section of code decides which subgraph should become district 1 and which should become district 2
@@ -452,7 +452,7 @@ def main(*args):
         Subgraph1Count = 0
         Subgraph2Count = 0
         DontMoveCount = 0
-        with arcpy.da.UpdateCursor(shapefile, [sf_name_field,"temp_dist"]) as cursor:
+        with arcpy.da.UpdateCursor(shapefile, [sf_name_field, "temp_dist"]) as cursor:
             for row in cursor: 
                 if row[0] in subgraphs[0]:
                     if SG_KEY_FIRST == dist1 :
@@ -481,7 +481,7 @@ def main(*args):
     
     #Returns values if this script was called by another script
     if __name__ != "__main__":
-        return(dist1_pop, dist2_pop,stateG,G,nlf.copy(),prevdists,neighbor_list)
+        return(dist1_pop, dist2_pop, stateG, G, nlf.copy(), prevdists, neighbor_list)
 
 if __name__ == "__main__":
     main()

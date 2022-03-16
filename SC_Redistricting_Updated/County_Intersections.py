@@ -2,7 +2,7 @@
 """
 Created on Mon Sep  6 12:12:47 2021
 
-@author: blake & amy
+@author: Blake Splitter and Amy Burton
 """
 
 import arcpy,os,sys
@@ -46,7 +46,7 @@ def CountIntersections2(dist1, dist2, Matrix, G, distcount):
         hypexcess_GU_mat[idx] = sum(col)-maxval #Calculates the hypothetical excess_GU values for the Matrix. 
         idx+=1
     hypexcess_GU = sum(hypexcess_GU_mat)
-    return(hypcount,HypMatrix,hypexcess_GU)
+    return(hypcount, HypMatrix, hypexcess_GU)
 
 
 def arcprint(message,*variables):
@@ -83,67 +83,65 @@ def arcerror(message,*variables):
     else: 
         raise RuntimeError("No value for runspot has been assigned")
 
-#%% START MAIN CODE
+# START MAIN CODE
 def main(*args):
-    global runspot #Allows runspot to be changed inside a function
+    global runspot  #Allows runspot to be changed inside a function
     
-    if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe": #Change this line if ArcGIS is located elsewhere
+    if sys.executable == r"C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe":  #Change this line if ArcGIS is located elsewhere
         runspot = "ArcGIS"
         arcprint("We are running this from inside ArcGIS")
     else:
         runspot = "console"
         arcprint("We are running this from the python console")   
             
-    # Set environment settings
+    #Set environment settings
     
     currentdir = os.getcwd()
     path = currentdir + "\\SC_Redistricting_Updated.gdb"
     arcpy.env.workspace = path
     
-    try: #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
+    try:  #First attempts to take input from system arguments (Works for ArcGIS parameters, for instance)
         in_table = sys.argv[1] 
         distcount = sys.argv[2]
         in_dist_field = sys.argv[3]
         county_field = sys.argv[4]
+        num_counties = sys.argv[5]
     except IndexError: 
-        try: #Second, tries to take input from explicit input into main()
-            in_table = args[0] #out_table from main algorithm is sent into in_table
+        try:  #Second, tries to take input from explicit input into main()
+            in_table = args[0]  #out_table from main algorithm is sent into in_table
             distcount = args[1]
             in_dist_field = args[2]
             county_field = args[3]
-        except IndexError: #Finally, manually assigns input values if they aren't provided
+            num_counties = args[4]
+        except IndexError:  #Finally, manually assigns input values if they aren't provided
             in_table = path + "\\SC_Precincts_2021_v7_SA_7dists_10000"
             distcount = 7
             in_dist_field = "Dist_Assgn"
             county_field = "County_Num"
+            num_counties = 46
             arcprint("We are using default input choices")
     
-#    with arcpy.da.UpdateCursor(in_table, in_dist_field) as cursor:
-#        for row in cursor:
-#            row[0] = random.randint(0,7)
-#            cursor.updateRow(row)
-    
     #CDI = County-District-Intersection
-    units_in_CDI = np.zeros([distcount,46], dtype=int)
+    units_in_CDI = np.zeros([distcount, num_counties], dtype=int)
     
     #Adds 1 to the matrix element A[i,j] if there is a precinct in the ith district and jth county
-    with arcpy.da.SearchCursor(in_table, [in_dist_field,county_field]) as cursor:
+    with arcpy.da.SearchCursor(in_table, [in_dist_field, county_field]) as cursor:
         for row in cursor:
-            units_in_CDI[int(row[0])-1][int(row[1])] +=1
+            units_in_CDI[int(row[0]) - 1][int(row[1]) - 1] += 1
     
-    CDI_Count = np.count_nonzero(units_in_CDI) - max(distcount,46)
+    CDI_Count = np.count_nonzero(units_in_CDI) - max(distcount, num_counties)
     
     #GU stands for Geographical Unit. In this loop, we count the number of GUs in each county that are not in the most prevalent district
-    excess_GU_mat = [0]*max(distcount,46)
+    excess_GU_mat = [0] * max(distcount, num_counties)
     transpose = units_in_CDI.transpose()
-    idx=0
+    idx = 0
     for row in transpose:
         maxval = max(row)
-        excess_GU_mat[idx] = sum(row)-maxval
-        idx+=1
+        excess_GU_mat[idx] = sum(row) - maxval
+        idx += 1
     excess_GU = sum(excess_GU_mat)
     
-    return(units_in_CDI.copy(),CDI_Count,excess_GU)
+    return(units_in_CDI.copy(), CDI_Count, excess_GU)
     
 #END FUNCTIONS    
 if __name__ == "__main__":
